@@ -70,6 +70,7 @@ class SettingsService extends PureNotifier<SettingsState> {
     shareViaLinkAutoAccept: _persistence.getShareViaLinkAutoAccept(),
     discoveryTimeout: _persistence.getDiscoveryTimeout(),
     advancedSettings: _persistence.getAdvancedSettingsEnabled(),
+    autoCopyToClipboard: _persistence.isAutoCopyToClipboard(),
   );
 
   Future<void> setAlias(String alias) async {
@@ -245,6 +246,13 @@ class SettingsService extends PureNotifier<SettingsState> {
 
     state = state.copyWith(
       shareViaLinkAutoAccept: shareViaLinkAutoAccept,
+    );
+  }
+
+  Future<void> setAutoCopyToClipboard(bool autoCopyToClipboard) async {
+    await _persistence.setAutoCopyToClipboard(autoCopyToClipboard);
+    state = state.copyWith(
+      autoCopyToClipboard: autoCopyToClipboard,
     );
   }
 }

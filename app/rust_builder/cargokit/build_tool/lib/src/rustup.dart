@@ -26,7 +26,11 @@ class Rustup {
 
   void installToolchain(String toolchain) {
     log.info("Installing Rust toolchain: $toolchain");
-    runCommand("rustup", ['toolchain', 'install', toolchain]);
+    runCommand("rustup", [
+      'toolchain',
+      'install',
+      toolchain,
+    ], environment: _rustupEnvironment);
     _installedToolchains
         .add(_Toolchain(toolchain, _getInstalledTargets(toolchain)));
   }
@@ -42,7 +46,7 @@ class Rustup {
       '--toolchain',
       toolchain,
       target,
-    ]);
+    ], environment: _rustupEnvironment);
     _installedTargets(toolchain)?.add(target);
   }
 
@@ -62,11 +66,15 @@ class Rustup {
       return parts[0];
     }
 
-    final res = runCommand("rustup", ['toolchain', 'list']);
+    final res = runCommand(
+      "rustup",
+      ['toolchain', 'list'],
+      environment: _rustupEnvironment,
+    );
 
     // To list all non-custom toolchains, we need to filter out lines that
-    // don't start with "stable", "beta", or "nightly".
-    Pattern nonCustom = RegExp(r"^(stable|beta|nightly)");
+    // don't start with "stable", "beta", "nightly", or an explicit version.
+    Pattern nonCustom = RegExp(r"^(stable|beta|nightly|[0-9]+\.[0-9]+\.[0-9]+)");
     final lines = res.stdout
         .toString()
         .split('\n')
@@ -91,7 +99,7 @@ class Rustup {
       '--toolchain',
       toolchain,
       '--installed',
-    ]);
+    ], environment: _rustupEnvironment);
     final lines = res.stdout
         .toString()
         .split('\n')
@@ -110,6 +118,7 @@ class Rustup {
     runCommand(
       "rustup",
       ['component', 'add', 'rust-src', '--toolchain', 'nightly'],
+      environment: _rustupEnvironment,
     );
     _didInstallRustSrcForNightly = true;
   }
@@ -134,3 +143,5 @@ class Rustup {
     return null;
   }
 }
+
+const _rustupEnvironment = {'RUSTUP_TOOLCHAIN': 'stable'};

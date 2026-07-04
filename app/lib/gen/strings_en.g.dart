@@ -392,11 +392,8 @@ class TranslationsReceivePageEn {
   // Translations
 
   /// en: '(one) {wants to send you a file} (other) {wants to send you {n} files}'
-  String subTitle({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(
-    n,
-    one: 'wants to send you a file',
-    other: 'wants to send you ${n} files',
-  );
+  String subTitle({required num n}) =>
+      (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: 'wants to send you a file', other: 'wants to send you ${n} files');
 
   /// en: 'sent you a message:'
   String get subTitleMessage => 'sent you a message:';
@@ -947,6 +944,15 @@ class TranslationsSendTabPickerEn {
 
   /// en: 'Paste'
   String get clipboard => 'Paste';
+
+  /// en: 'Camera'
+  String get camera => 'Camera';
+
+  /// en: 'Take Photo'
+  String get takePhoto => 'Take Photo';
+
+  /// en: 'Record Video'
+  String get takeVideo => 'Record Video';
 }
 
 // Path: sendTab.sendModes
@@ -1049,6 +1055,9 @@ class TranslationsSettingsTabReceiveEn {
 
   /// en: 'Save to history'
   String get saveToHistory => 'Save to history';
+
+  /// en: 'Copy received files to clipboard automatically'
+  String get autoCopyToClipboard => 'Copy received files to clipboard automatically';
 }
 
 // Path: settingsTab.send

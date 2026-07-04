@@ -14,6 +14,7 @@ import 'package:localsend_app/provider/network/send_provider.dart';
 import 'package:localsend_app/provider/network/server/server_provider.dart';
 import 'package:localsend_app/provider/progress_provider.dart';
 import 'package:localsend_app/provider/settings_provider.dart';
+import 'package:localsend_app/util/clipboard_helper.dart';
 import 'package:localsend_app/util/file_size_helper.dart';
 import 'package:localsend_app/util/file_speed_helper.dart';
 import 'package:localsend_app/util/native/open_file.dart';
@@ -21,6 +22,7 @@ import 'package:localsend_app/util/native/open_folder.dart';
 import 'package:localsend_app/util/native/platform_check.dart';
 import 'package:localsend_app/util/native/taskbar_helper.dart';
 import 'package:localsend_app/util/ui/nav_bar_padding.dart';
+import 'package:localsend_app/util/ui/snackbar.dart';
 import 'package:localsend_app/widget/custom_basic_appbar.dart';
 import 'package:localsend_app/widget/custom_progress_bar.dart';
 import 'package:localsend_app/widget/dialogs/cancel_session_dialog.dart';
@@ -410,6 +412,17 @@ class _ProgressPageState extends State<ProgressPage> with Refena {
                             ],
                           ),
                         ),
+                        if (receiveSession != null && fileStatus == FileStatus.finished && filePath != null)
+                          IconButton(
+                            icon: const Icon(Icons.content_copy),
+                            tooltip: t.general.copy,
+                            onPressed: () async {
+                              final ok = await copyToClipboard(fileType: file.fileType, path: filePath);
+                              if (context.mounted) {
+                                context.showSnackBar(ok ? t.general.copiedToClipboard : t.general.error);
+                              }
+                            },
+                          ),
                         if (sendSession != null && fileStatus == FileStatus.failed)
                           IconButton(
                             icon: const Icon(Icons.refresh),

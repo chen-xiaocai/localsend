@@ -6,6 +6,8 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_cropper/image_cropper.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:localsend_app/config/theme.dart';
 import 'package:localsend_app/gen/strings.g.dart';
 import 'package:localsend_app/model/cross_file.dart';
@@ -40,7 +42,8 @@ enum FilePickerOption {
   media(Icons.image),
   text(Icons.subject),
   app(Icons.apps),
-  clipboard(Icons.paste);
+  clipboard(Icons.paste),
+  camera(Icons.camera_alt);
 
   const FilePickerOption(this.icon);
 
@@ -60,6 +63,8 @@ enum FilePickerOption {
         return t.sendTab.picker.app;
       case FilePickerOption.clipboard:
         return t.sendTab.picker.clipboard;
+      case FilePickerOption.camera:
+        return t.sendTab.picker.camera;
     }
   }
 
@@ -81,6 +86,7 @@ enum FilePickerOption {
       return [
         FilePickerOption.file,
         FilePickerOption.media,
+        FilePickerOption.camera,
         FilePickerOption.clipboard,
         FilePickerOption.text,
         FilePickerOption.folder,
@@ -132,6 +138,10 @@ class PickFileAction extends AsyncGlobalAction {
       case FilePickerOption.app:
         // ignore: use_build_context_synchronously
         await _pickApp(context);
+        break;
+      case FilePickerOption.camera:
+        // ignore: use_build_context_synchronously
+        await _pickCamera(context, ref);
         break;
     }
   }
@@ -371,6 +381,109 @@ Future<void> _pickApp(BuildContext context) async {
   // Currently, only Android APK
   await context.push(() => const ApkPickerPage());
 }
+
+/// 相机拍摄(仅 Android):弹底部选择「拍照/录像」,调 image_picker 启动系统相机,
+/// 拍完的 XFile 转成 CrossFile 加入发送列表(与 _pickMedia/_pickText 流程一致)。
+Future<void> _pickCamera(BuildContext context, Ref ref) async {
+  // 仅 Android 显示此选项,但加一道保险
+  if (!checkPlatform([TargetPlatform.android])) {
+    return;
+  }
+
+  final choice = await showModalBottomSheet<_CameraChoice>(
+    context: context,
+    builder: (context) {
+      return SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera),
+              title: Text(t.sendTab.picker.takePhoto),
+              onTap: () => Navigator.pop(context, _CameraChoice.photo),
+            ),
+            ListTile(
+              leading: const Icon(Icons.videocam),
+              title: Text(t.sendTab.picker.takeVideo),
+              onTap: () => Navigator.pop(context, _CameraChoice.video),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+
+  if (choice == null || !context.mounted) {
+    return;
+  }
+
+  try {
+    final picker = ImagePicker();
+    final XFile? result;
+    if (choice == _CameraChoice.photo) {
+      result = await picker.pickImage(source: ImageSource.camera, maxWidth: 1920);
+    } else {
+      result = await picker.pickVideo(source: ImageSource.camera, maxDuration: const Duration(minutes: 10));
+    }
+
+    if (result == null) {
+      _logger.info('User canceled camera');
+      return;
+    }
+
+    final fileToAdd = choice == _CameraChoice.photo && context.mounted ? await _cropCameraPhoto(context, result) : result;
+
+    await ref
+        .redux(selectedSendingFilesProvider)
+        .dispatchAsync(
+          AddFilesAction(
+            files: [fileToAdd],
+            converter: CrossFileConverters.convertXFile,
+          ),
+        );
+  } catch (e) {
+    _logger.warning('Failed to capture from camera', e);
+    if (context.mounted) {
+      // ignore: use_build_context_synchronously
+      await showDialog(context: context, builder: (_) => const NoPermissionDialog());
+    }
+  }
+}
+
+Future<XFile> _cropCameraPhoto(BuildContext context, XFile captured) async {
+  try {
+    final colorScheme = Theme.of(context).colorScheme;
+    final cropper = ImageCropper();
+    final cropped = await cropper.cropImage(
+      sourcePath: captured.path,
+      maxWidth: 1920,
+      compressQuality: 92,
+      uiSettings: [
+        AndroidUiSettings(
+          toolbarTitle: t.general.edit,
+          toolbarColor: colorScheme.surface,
+          toolbarWidgetColor: colorScheme.onSurface,
+          backgroundColor: colorScheme.surface,
+          activeControlsWidgetColor: colorScheme.primary,
+          statusBarLight: colorScheme.brightness == Brightness.light,
+          navBarLight: colorScheme.brightness == Brightness.light,
+          lockAspectRatio: false,
+          initAspectRatio: CropAspectRatioPreset.original,
+        ),
+      ],
+    );
+    await cropper.recoverImage();
+    if (cropped == null) {
+      return captured;
+    }
+    return XFile(cropped.path, name: captured.name, mimeType: captured.mimeType);
+  } catch (e) {
+    _logger.warning('Failed to crop camera photo, using original image', e);
+    return captured;
+  }
+}
+
+enum _CameraChoice { photo, video }
 
 extension on int {
   String get twoDigitString => toString().padLeft(2, '0');

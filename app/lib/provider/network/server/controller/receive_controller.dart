@@ -38,6 +38,7 @@ import 'package:localsend_app/provider/receive_history_provider.dart';
 import 'package:localsend_app/provider/selection/selected_receiving_files_provider.dart';
 import 'package:localsend_app/provider/selection/selected_sending_files_provider.dart';
 import 'package:localsend_app/provider/settings_provider.dart';
+import 'package:localsend_app/util/clipboard_helper.dart';
 import 'package:localsend_app/util/native/directories.dart';
 import 'package:localsend_app/util/native/file_saver.dart';
 import 'package:localsend_app/util/native/platform_check.dart';
@@ -280,6 +281,10 @@ class ReceiveController {
 
       final message = server.getState().session?.message;
       if (message != null) {
+        if (settings.autoCopyToClipboard) {
+          unawaited(copyToClipboard(text: message));
+        }
+
         // Message already received
         await server.ref
             .redux(receiveHistoryProvider)
@@ -606,6 +611,11 @@ class ReceiveController {
           quickSave = true;
         }
       }
+
+      if (settings.autoCopyToClipboard && !hasError) {
+        unawaited(_autoCopySessionFiles(session));
+      }
+
       if (quickSave) {
         // close the session **after** return of the response
         Future.delayed(Duration.zero, () {
@@ -833,6 +843,25 @@ class ReceiveController {
       ),
     );
     server.ref.notifier(progressProvider).removeSession(sessionId);
+  }
+
+  /// Copies completed files once a receive session has fully finished.
+  Future<void> _autoCopySessionFiles(ReceiveSessionState session) async {
+    try {
+      final finished = session.files.values.where((f) => f.status == FileStatus.finished && f.path != null).toList();
+      if (finished.isEmpty) return;
+
+      bool ok;
+      if (finished.length == 1) {
+        final f = finished.first;
+        ok = await copyToClipboard(fileType: f.file.fileType, path: f.path);
+      } else {
+        ok = await copyFilesToClipboard(finished.map((f) => f.path!).toList());
+      }
+      _logger.info('Auto copy to clipboard: $ok (${finished.length} file(s))');
+    } catch (e) {
+      _logger.warning('Auto copy to clipboard failed', e);
+    }
   }
 }
 
