@@ -232,6 +232,10 @@
       "count": "Fișiere: {curr} / {n}",
       "size": "Dimensiune: {curr} / {n}",
       "speed": "Viteză: {speed}/s"
+    },
+    "remainingTime": {
+      "@hours": "Folosește „h” pentru abrevierea orelor și „m” pentru minute",
+      "@days": "Folosește „d” pentru zile, „h” pentru ore și „m” pentru minute"
     }
   },
   "webSharePage": {

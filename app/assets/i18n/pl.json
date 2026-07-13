@@ -46,7 +46,7 @@
     "infoBox": {
       "ip": "IP:",
       "port": "Port:",
-      "alias": "Alias:"
+      "alias": "Nazwa urządzenia:"
     },
     "quickSave": {
       "off": "@:general.off",
@@ -238,8 +238,8 @@
       "minutes": "{n}:{ss}",
       "hours": "{h}h {m}m",
       "days": "{d}d {h}h {m}m",
-      "@hours": "Użyj „h” w przypadku skrótu godzin i „m” w przypadku minut",
-      "@days": "Uży „d” w przypadku dni, „h” w przypadku godzin i „m” w przypadku minut"
+      "@hours": "Użyj 'h' dla godzin i 'm' dla minut",
+      "@days": "Użyj 'd' dla dni, 'h' dla godzin, i 'm' dla minut"
     }
   },
   "webSharePage": {
