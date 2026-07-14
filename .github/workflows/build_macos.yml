@@ -25,11 +25,18 @@ jobs:
         working-directory: app
         run: flutter pub get
 
+      - name: Configure unsigned Xcode build
+        working-directory: app
+        run: |
+          project=macos/Runner.xcodeproj/project.pbxproj
+          sed -i '' \
+            -e 's/"Apple Development"/"-"/g' \
+            -e 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' \
+            -e 's/DEVELOPMENT_TEAM = 3W7H4PYMCV;/DEVELOPMENT_TEAM = "";/g' \
+            "$project"
+
       - name: Build macOS app
         working-directory: app
-        env:
-          CODE_SIGNING_ALLOWED: "NO"
-          CODE_SIGNING_REQUIRED: "NO"
         run: flutter build macos --release
 
       - name: Package app bundle
