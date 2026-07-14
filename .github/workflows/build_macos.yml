@@ -41,7 +41,10 @@ jobs:
 
       - name: Package app bundle
         working-directory: app/build/macos/Build/Products/Release
-        run: ditto -c -k --keepParent localsend_app.app LocalSend-macos-arm64.zip
+        run: |
+          app_bundle=$(find . -maxdepth 1 -type d -name '*.app' -print -quit)
+          test -n "$app_bundle"
+          ditto -c -k --keepParent "$app_bundle" LocalSend-macos-arm64.zip
 
       - name: Upload macOS app
         uses: actions/upload-artifact@v6
