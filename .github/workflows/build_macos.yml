@@ -27,6 +27,9 @@ jobs:
 
       - name: Build macOS app
         working-directory: app
+        env:
+          CODE_SIGNING_ALLOWED: "NO"
+          CODE_SIGNING_REQUIRED: "NO"
         run: flutter build macos --release
 
       - name: Package app bundle
