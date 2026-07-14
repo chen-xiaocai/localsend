@@ -27,7 +27,7 @@ jobs:
 
       - name: Build macOS app
         working-directory: app
-        run: flutter build macos --release --macos-archs=arm64
+        run: flutter build macos --release
 
       - name: Package app bundle
         working-directory: app/build/macos/Build/Products/Release
