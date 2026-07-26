@@ -9,7 +9,15 @@ const _uuid = Uuid();
 class FavoriteDevice with FavoriteDeviceMappable {
   final String id;
   final String fingerprint;
+
+  /// The primary (last known working) IP address.
   final String ip;
+
+  /// All known IP addresses of this device (a device may be reachable via
+  /// multiple interfaces, e.g. LAN and Tailscale).
+  /// May be empty for entries persisted by older versions; use [addresses].
+  final List<String> ips;
+
   final int port;
   final String alias;
 
@@ -22,6 +30,7 @@ class FavoriteDevice with FavoriteDeviceMappable {
     required this.id,
     required this.fingerprint,
     required this.ip,
+    this.ips = const [],
     required this.port,
     required this.alias,
     this.customAlias = false,
@@ -37,10 +46,36 @@ class FavoriteDevice with FavoriteDeviceMappable {
       id: _uuid.v1(),
       fingerprint: fingerprint,
       ip: ip,
+      ips: [ip],
       port: port,
       alias: alias,
       customAlias: false,
     );
+  }
+
+  /// All known IPs with the primary [ip] first.
+  List<String> get addresses => [ip, ...ips.where((e) => e != ip)];
+
+  /// Returns a copy with [newIp] added to the known IPs.
+  /// If [primary] is true, [newIp] becomes the primary IP.
+  FavoriteDevice withIp(String newIp, {bool primary = false}) {
+    final merged = primary
+        ? [newIp, ...addresses.where((e) => e != newIp)]
+        : [...addresses, if (!addresses.contains(newIp)) newIp];
+    return copyWith(ip: merged.first, ips: merged);
+  }
+
+  /// Merges [other] (same fingerprint) into this favorite, keeping this
+  /// entry's identity and combining the known IPs.
+  FavoriteDevice mergeWith(FavoriteDevice other) {
+    var merged = this;
+    for (final ip in other.addresses) {
+      merged = merged.withIp(ip);
+    }
+    if (!customAlias && other.customAlias) {
+      merged = merged.copyWith(alias: other.alias, customAlias: true);
+    }
+    return merged;
   }
 
   static const fromJson = FavoriteDeviceMapper.fromJson;

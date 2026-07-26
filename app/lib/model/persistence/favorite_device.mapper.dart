@@ -30,6 +30,13 @@ class FavoriteDeviceMapper extends ClassMapperBase<FavoriteDevice> {
   );
   static String _$ip(FavoriteDevice v) => v.ip;
   static const Field<FavoriteDevice, String> _f$ip = Field('ip', _$ip);
+  static List<String> _$ips(FavoriteDevice v) => v.ips;
+  static const Field<FavoriteDevice, List<String>> _f$ips = Field(
+    'ips',
+    _$ips,
+    opt: true,
+    def: const [],
+  );
   static int _$port(FavoriteDevice v) => v.port;
   static const Field<FavoriteDevice, int> _f$port = Field('port', _$port);
   static String _$alias(FavoriteDevice v) => v.alias;
@@ -41,15 +48,23 @@ class FavoriteDeviceMapper extends ClassMapperBase<FavoriteDevice> {
     opt: true,
     def: false,
   );
+  static List<String> _$addresses(FavoriteDevice v) => v.addresses;
+  static const Field<FavoriteDevice, List<String>> _f$addresses = Field(
+    'addresses',
+    _$addresses,
+    mode: FieldMode.member,
+  );
 
   @override
   final MappableFields<FavoriteDevice> fields = const {
     #id: _f$id,
     #fingerprint: _f$fingerprint,
     #ip: _f$ip,
+    #ips: _f$ips,
     #port: _f$port,
     #alias: _f$alias,
     #customAlias: _f$customAlias,
+    #addresses: _f$addresses,
   };
 
   static FavoriteDevice _instantiate(DecodingData data) {
@@ -57,6 +72,7 @@ class FavoriteDeviceMapper extends ClassMapperBase<FavoriteDevice> {
       id: data.dec(_f$id),
       fingerprint: data.dec(_f$fingerprint),
       ip: data.dec(_f$ip),
+      ips: data.dec(_f$ips),
       port: data.dec(_f$port),
       alias: data.dec(_f$alias),
       customAlias: data.dec(_f$customAlias),
@@ -125,10 +141,12 @@ extension FavoriteDeviceValueCopy<$R, $Out>
 
 abstract class FavoriteDeviceCopyWith<$R, $In extends FavoriteDevice, $Out>
     implements ClassCopyWith<$R, $In, $Out> {
+  ListCopyWith<$R, String, ObjectCopyWith<$R, String, String>> get ips;
   $R call({
     String? id,
     String? fingerprint,
     String? ip,
+    List<String>? ips,
     int? port,
     String? alias,
     bool? customAlias,
@@ -147,10 +165,18 @@ class _FavoriteDeviceCopyWithImpl<$R, $Out>
   late final ClassMapperBase<FavoriteDevice> $mapper =
       FavoriteDeviceMapper.ensureInitialized();
   @override
+  ListCopyWith<$R, String, ObjectCopyWith<$R, String, String>> get ips =>
+      ListCopyWith(
+        $value.ips,
+        (v, t) => ObjectCopyWith(v, $identity, t),
+        (v) => call(ips: v),
+      );
+  @override
   $R call({
     String? id,
     String? fingerprint,
     String? ip,
+    List<String>? ips,
     int? port,
     String? alias,
     bool? customAlias,
@@ -159,6 +185,7 @@ class _FavoriteDeviceCopyWithImpl<$R, $Out>
       if (id != null) #id: id,
       if (fingerprint != null) #fingerprint: fingerprint,
       if (ip != null) #ip: ip,
+      if (ips != null) #ips: ips,
       if (port != null) #port: port,
       if (alias != null) #alias: alias,
       if (customAlias != null) #customAlias: customAlias,
@@ -169,6 +196,7 @@ class _FavoriteDeviceCopyWithImpl<$R, $Out>
     id: data.get(#id, or: $value.id),
     fingerprint: data.get(#fingerprint, or: $value.fingerprint),
     ip: data.get(#ip, or: $value.ip),
+    ips: data.get(#ips, or: $value.ips),
     port: data.get(#port, or: $value.port),
     alias: data.get(#alias, or: $value.alias),
     customAlias: data.get(#customAlias, or: $value.customAlias),

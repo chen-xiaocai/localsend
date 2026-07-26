@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:common/model/device.dart';
 import 'package:flutter/material.dart';
 import 'package:localsend_app/config/theme.dart';
@@ -27,26 +29,22 @@ class _FavoritesDialogState extends State<FavoritesDialog> with Refena {
   String? _error;
 
   /// Checks if the device is reachable and pops the dialog with the result if it is.
+  /// All known IPs of the favorite are probed in parallel;
+  /// the first one that responds wins and becomes the new primary IP.
   Future<void> _checkConnectionToDevice(FavoriteDevice favorite) async {
     setState(() {
       _fetching = true;
+      _error = null;
     });
 
     final https = ref.read(settingsProvider).https;
 
     try {
       final payload = ref.read(deviceFullInfoProvider).toRegisterDto();
-      final response = await ref
-          .read(httpProvider)
-          .v2
-          .register(
-        protocol: https ? ProtocolType.https : ProtocolType.http,
-        ip: favorite.ip,
-        port: favorite.port,
-        payload: payload,
-      );
+      final device = await _raceAddresses(favorite, https, payload);
 
-      final device = response.body.toDevice(favorite.ip, favorite.port, https, HttpDiscovery(ip: favorite.ip));
+      // Remember which IP actually worked.
+      await ref.redux(favoritesProvider).dispatchAsync(UpdateFavoriteAction(favorite.withIp(device.ip!, primary: true)));
 
       if (mounted) {
         context.pop(device);
@@ -57,6 +55,42 @@ class _FavoritesDialogState extends State<FavoritesDialog> with Refena {
         _error = e.toString();
       });
     }
+  }
+
+  /// Registers with all known IPs of [favorite] concurrently and returns the
+  /// device from the first successful response.
+  /// Throws the first error if no IP responds.
+  Future<Device> _raceAddresses(FavoriteDevice favorite, bool https, RegisterDto payload) {
+    final addresses = favorite.addresses;
+    final completer = Completer<Device>();
+    var pending = addresses.length;
+    Object? firstError;
+
+    for (final ip in addresses) {
+      // ignore: discarded_futures
+      ref
+          .read(httpProvider)
+          .v2
+          .register(
+            protocol: https ? ProtocolType.https : ProtocolType.http,
+            ip: ip,
+            port: favorite.port,
+            payload: payload,
+          )
+          .then((response) {
+        if (!completer.isCompleted) {
+          completer.complete(response.body.toDevice(ip, favorite.port, https, HttpDiscovery(ip: ip)));
+        }
+      }).catchError((Object e) {
+        firstError ??= e;
+        pending--;
+        if (pending == 0 && !completer.isCompleted) {
+          completer.completeError(firstError!);
+        }
+      });
+    }
+
+    return completer.future;
   }
 
   Future<void> _showDeviceDialog([FavoriteDevice? favorite]) async {
@@ -90,7 +124,7 @@ class _FavoritesDialogState extends State<FavoritesDialog> with Refena {
                     onPressed: _fetching ? null : () async => await _checkConnectionToDevice(favorite),
                     child: Align(
                       alignment: Alignment.centerLeft,
-                      child: Text('${favorite.alias}\n(${favorite.ip})'),
+                      child: Text('${favorite.alias}\n(${favorite.addresses.join(', ')})'),
                     ),
                   ),
                 ),
