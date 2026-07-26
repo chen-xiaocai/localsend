@@ -195,16 +195,18 @@ class ProposingClientInfo {
   final String version;
   final String? deviceModel;
   final DeviceType? deviceType;
+  final String token;
 
   const ProposingClientInfo({
     required this.alias,
     required this.version,
     this.deviceModel,
     this.deviceType,
+    required this.token,
   });
 
   @override
-  int get hashCode => alias.hashCode ^ version.hashCode ^ deviceModel.hashCode ^ deviceType.hashCode;
+  int get hashCode => alias.hashCode ^ version.hashCode ^ deviceModel.hashCode ^ deviceType.hashCode ^ token.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -214,7 +216,8 @@ class ProposingClientInfo {
           alias == other.alias &&
           version == other.version &&
           deviceModel == other.deviceModel &&
-          deviceType == other.deviceType;
+          deviceType == other.deviceType &&
+          token == other.token;
 }
 
 class RTCFileError {

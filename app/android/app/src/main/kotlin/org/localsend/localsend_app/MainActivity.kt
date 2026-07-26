@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.database.Cursor
 import android.net.Uri
+import android.os.Bundle
 import android.provider.DocumentsContract
 import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
@@ -32,6 +33,33 @@ class MainActivity : FlutterActivity() {
         fun createDefaultIntent(launchContext: Context): Intent {
             return withNewEngine().build(launchContext)
         }
+
+        /**
+         * WeChat and other apps use ACTION_VIEW for "Open with" instead of ACTION_SEND.
+         * Convert to ACTION_SEND so share_handler can process the file URI.
+         */
+        fun convertViewIntentIfNeeded(intent: Intent): Intent {
+            if (intent.action != Intent.ACTION_VIEW) {
+                return intent
+            }
+
+            val data = intent.data ?: return intent
+
+            return Intent(Intent.ACTION_SEND).apply {
+                type = intent.type?.takeIf { it.isNotEmpty() } ?: "*/*"
+                putExtra(Intent.EXTRA_STREAM, data)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+        }
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        setIntent(convertViewIntentIfNeeded(intent))
+        super.onCreate(savedInstanceState)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(convertViewIntentIfNeeded(intent))
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {

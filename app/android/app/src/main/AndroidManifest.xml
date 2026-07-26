@@ -70,6 +70,14 @@
                 <data android:mimeType="*/*" />
             </intent-filter>
 
+            <!-- localsend: Receive "Open with" intent (ACTION_VIEW -> ACTION_SEND in MainActivity) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" android:scheme="content" />
+                <data android:mimeType="*/*" android:scheme="file" />
+            </intent-filter>
+
         </activity>
 
         <!-- Quick tile to launch the app -->

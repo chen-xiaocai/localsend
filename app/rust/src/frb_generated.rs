@@ -2556,11 +2556,13 @@ impl SseDecode for crate::api::webrtc::ProposingClientInfo {
         let mut var_version = <String>::sse_decode(deserializer);
         let mut var_deviceModel = <Option<String>>::sse_decode(deserializer);
         let mut var_deviceType = <Option<crate::api::model::DeviceType>>::sse_decode(deserializer);
+        let mut var_token = <String>::sse_decode(deserializer);
         return crate::api::webrtc::ProposingClientInfo {
             alias: var_alias,
             version: var_version,
             device_model: var_deviceModel,
             device_type: var_deviceType,
+            token: var_token,
         };
     }
 }
@@ -3421,6 +3423,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::webrtc::ProposingClientInfo {
             self.version.into_into_dart().into_dart(),
             self.device_model.into_into_dart().into_dart(),
             self.device_type.into_into_dart().into_dart(),
+            self.token.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -4253,6 +4256,7 @@ impl SseEncode for crate::api::webrtc::ProposingClientInfo {
         <String>::sse_encode(self.version, serializer);
         <Option<String>>::sse_encode(self.device_model, serializer);
         <Option<crate::api::model::DeviceType>>::sse_encode(self.device_type, serializer);
+        <String>::sse_encode(self.token, serializer);
     }
 }
 

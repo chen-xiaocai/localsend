@@ -271,6 +271,26 @@ mod tests {
     }
 
     #[test]
+    fn test_register_response_v2_mac_flutter_server_style() {
+        let json = r#"{
+            "alias": "MacBook Air",
+            "version": "2.0",
+            "deviceModel": "macOS",
+            "deviceType": "desktop",
+            "fingerprint": "abc123fingerprint",
+            "download": true
+        }"#;
+
+        let dto: RegisterResponseDtoV2 = serde_json::from_str(json).unwrap();
+        assert_eq!(dto.alias, "MacBook Air");
+        assert_eq!(dto.version, "2.0");
+        assert_eq!(dto.device_model, Some("macOS".to_string()));
+        assert_eq!(dto.device_type, Some(DeviceType::Desktop));
+        assert_eq!(dto.fingerprint, "abc123fingerprint");
+        assert!(dto.download);
+    }
+
+    #[test]
     fn test_prepare_upload_request_v2() {
         let request = PrepareUploadRequestDtoV2 {
             info: RegisterDtoV2 {

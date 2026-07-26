@@ -9,8 +9,9 @@ import 'package:routerino/routerino.dart';
 
 class AddFileDialog extends StatelessWidget {
   final List<FilePickerOption> options;
+  final BuildContext parentContext;
 
-  const AddFileDialog({required this.options});
+  const AddFileDialog({required this.options, required this.parentContext});
 
   static Future<void> open({required BuildContext context, required List<FilePickerOption> options}) async {
     if (checkPlatformIsDesktop()) {
@@ -26,7 +27,7 @@ class AddFileDialog extends StatelessWidget {
               children: [
                 Text(t.dialogs.addFile.content),
                 const SizedBox(height: 20),
-                AddFileDialog(options: options),
+                AddFileDialog(options: options, parentContext: context),
               ],
             ),
           ),
@@ -45,7 +46,7 @@ class AddFileDialog extends StatelessWidget {
         () => CustomBottomSheet(
           title: t.dialogs.addFile.title,
           description: t.dialogs.addFile.content,
-          child: AddFileDialog(options: options),
+          child: AddFileDialog(options: options, parentContext: context),
         ),
       );
     }
@@ -64,7 +65,10 @@ class AddFileDialog extends StatelessWidget {
             filled: true,
             onTap: () async {
               context.popUntilRoot();
-              await context.global.dispatchAsync(PickFileAction(option: option, context: context));
+              if (!parentContext.mounted) {
+                return;
+              }
+              await parentContext.global.dispatchAsync(PickFileAction(option: option, context: parentContext));
             },
           );
         }),

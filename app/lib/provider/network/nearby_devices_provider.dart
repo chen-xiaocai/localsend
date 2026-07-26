@@ -97,11 +97,16 @@ class RegisterDeviceAction extends AsyncReduxAction<NearbyDevicesService, Nearby
 /// Registers a new device found via signaling.
 class RegisterSignalingDeviceAction extends ReduxAction<NearbyDevicesService, NearbyDevicesState> {
   final Device device;
+  final String? localFingerprint;
 
-  RegisterSignalingDeviceAction(this.device);
+  RegisterSignalingDeviceAction(this.device, {this.localFingerprint});
 
   @override
   NearbyDevicesState reduce() {
+    if (localFingerprint != null && device.fingerprint == localFingerprint) {
+      return state;
+    }
+
     final Set<Device> existingDevices = state.signalingDevices[device.fingerprint]?.toSet() ?? {};
     final existingDevice = existingDevices.firstWhereOrNull((e) => e.signalingId == device.signalingId);
     if (existingDevice != null) {

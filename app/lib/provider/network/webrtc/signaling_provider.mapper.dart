@@ -36,12 +36,19 @@ class SignalingStateMapper extends ClassMapperBase<SignalingState> {
       v.connections;
   static const Field<SignalingState, Map<String, LsSignalingConnection>>
   _f$connections = Field('connections', _$connections);
+  static Set<String> _$connectingServers(SignalingState v) =>
+      v.connectingServers;
+  static const Field<SignalingState, Set<String>> _f$connectingServers = Field(
+    'connectingServers',
+    _$connectingServers,
+  );
 
   @override
   final MappableFields<SignalingState> fields = const {
     #signalingServers: _f$signalingServers,
     #stunServers: _f$stunServers,
     #connections: _f$connections,
+    #connectingServers: _f$connectingServers,
   };
 
   static SignalingState _instantiate(DecodingData data) {
@@ -49,6 +56,7 @@ class SignalingStateMapper extends ClassMapperBase<SignalingState> {
       signalingServers: data.dec(_f$signalingServers),
       stunServers: data.dec(_f$stunServers),
       connections: data.dec(_f$connections),
+      connectingServers: data.dec(_f$connectingServers),
     );
   }
 
@@ -128,6 +136,7 @@ abstract class SignalingStateCopyWith<$R, $In extends SignalingState, $Out>
     List<String>? signalingServers,
     List<String>? stunServers,
     Map<String, LsSignalingConnection>? connections,
+    Set<String>? connectingServers,
   });
   SignalingStateCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(
     Then<$Out2, $R2> t,
@@ -173,11 +182,13 @@ class _SignalingStateCopyWithImpl<$R, $Out>
     List<String>? signalingServers,
     List<String>? stunServers,
     Map<String, LsSignalingConnection>? connections,
+    Set<String>? connectingServers,
   }) => $apply(
     FieldCopyWithData({
       if (signalingServers != null) #signalingServers: signalingServers,
       if (stunServers != null) #stunServers: stunServers,
       if (connections != null) #connections: connections,
+      if (connectingServers != null) #connectingServers: connectingServers,
     }),
   );
   @override
@@ -185,6 +196,10 @@ class _SignalingStateCopyWithImpl<$R, $Out>
     signalingServers: data.get(#signalingServers, or: $value.signalingServers),
     stunServers: data.get(#stunServers, or: $value.stunServers),
     connections: data.get(#connections, or: $value.connections),
+    connectingServers: data.get(
+      #connectingServers,
+      or: $value.connectingServers,
+    ),
   );
 
   @override

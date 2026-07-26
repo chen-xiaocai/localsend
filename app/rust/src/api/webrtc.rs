@@ -1,7 +1,6 @@
 use crate::frb_generated::StreamSink;
 use bytes::Bytes;
 use flutter_rust_bridge::{frb, DartFnFuture};
-use localsend::crypto::token::SigningTokenKey;
 use localsend::model::discovery::DeviceType;
 use localsend::model::transfer::FileDto;
 pub use localsend::webrtc::signaling::{
@@ -23,17 +22,19 @@ pub struct ProposingClientInfo {
     pub version: String,
     pub device_model: Option<String>,
     pub device_type: Option<DeviceType>,
+    /// Stable device token (typically the certificate fingerprint).
+    pub token: String,
 }
 
 impl ProposingClientInfo {
-    fn sign(&self, signing_key: &SigningTokenKey) -> anyhow::Result<ClientInfoWithoutId> {
-        Ok(ClientInfoWithoutId {
+    fn to_client_info(&self) -> ClientInfoWithoutId {
+        ClientInfoWithoutId {
             alias: self.alias.clone(),
             version: self.version.clone(),
             device_model: self.device_model.clone(),
             device_type: self.device_type.clone(),
-            token: localsend::crypto::token::generate_token_timestamp(&signing_key)?,
-        })
+            token: self.token.clone(),
+        }
     }
 }
 
@@ -44,15 +45,12 @@ pub async fn connect(
     private_key: String,
     on_connection: impl Fn(LsSignalingConnection) -> DartFnFuture<()>,
 ) {
-    let Ok(signing_key) = localsend::crypto::token::parse_private_key(&private_key) else {
+    if localsend::crypto::token::parse_private_key(&private_key).is_err() {
         let _ = sink.add_error(anyhow::anyhow!("Invalid private key"));
         return;
     };
 
-    let Ok(client_info) = info.sign(&signing_key) else {
-        let _ = sink.add_error(anyhow::anyhow!("Invalid client info"));
-        return;
-    };
+    let client_info = info.to_client_info();
 
     let connection = match SignalingConnection::connect(uri, &client_info).await {
         Ok(connection) => connection,
