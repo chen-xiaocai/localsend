@@ -47,6 +47,10 @@ Future<void> main(List<String> arguments) async {
         defaultsTo: true, help: 'Probe online Tailscale peers')
     ..addFlag('json', negatable: false, help: 'Print machine-readable JSON');
 
+  final restartParser = parser.addCommand('restart');
+  restartParser.addFlag('help',
+      abbr: 'h', negatable: false, help: 'Prints usage information');
+
   ArgResults results;
   try {
     results = parser.parse(arguments);
@@ -68,6 +72,12 @@ Future<void> main(List<String> arguments) async {
 
   if (command['help'] as bool) {
     _printCommandUsage(command.name!, parser);
+    return;
+  }
+
+  // restart 只操作 systemd，不需要加载 node 配置
+  if (command.name == 'restart') {
+    await _runRestart();
     return;
   }
 
@@ -243,6 +253,46 @@ Future<void> _runDevices(NodeConfig cfg, ArgResults devicesArgs) async {
   _printDevicesTable(peers);
 }
 
+/// 重启 systemd user 服务 localsend（清掉卡住的接收会话）。
+Future<void> _runRestart() async {
+  final restart = await Process.run(
+    'systemctl',
+    ['--user', 'restart', 'localsend'],
+    runInShell: false,
+  );
+  if (restart.exitCode != 0) {
+    stderr.writeln('systemctl --user restart localsend failed');
+    stderr.writeln('exitCode=${restart.exitCode}');
+    stderr.writeln('stdout=${restart.stdout}');
+    stderr.writeln('stderr=${restart.stderr}');
+    exit(restart.exitCode);
+  }
+
+  // 等服务拉起后再打 status，避免刚 restart 时还是 activating
+  await Future<void>.delayed(const Duration(milliseconds: 800));
+  final status = await Process.run(
+    'systemctl',
+    ['--user', 'is-active', 'localsend'],
+    runInShell: false,
+  );
+  final active = (status.stdout as String).trim();
+  if (active == 'active') {
+    print('localsend restarted: active');
+  } else {
+    stderr.writeln('localsend restart finished but state=$active');
+    stderr.writeln('stdout=${status.stdout}');
+    stderr.writeln('stderr=${status.stderr}');
+    final detail = await Process.run(
+      'systemctl',
+      ['--user', 'status', 'localsend', '--no-pager'],
+      runInShell: false,
+    );
+    stderr.writeln(detail.stdout);
+    stderr.writeln(detail.stderr);
+    exit(1);
+  }
+}
+
 void _print(String line) => print(line);
 
 Map<String, dynamic> _peerToJson(DiscoveredPeer peer) => {
@@ -312,11 +362,21 @@ void _printUsage(ArgParser parser, {String? error}) {
       '  send <files...>      Discover devices and send files to a chosen one.');
   print(
       '  devices              List online devices, including Tailscale peers.');
+  print(
+      '  restart              Restart the systemd user receiver (clear stuck session).');
   print('');
   print('Run "localsend <command> -h" for command-specific options.');
 }
 
 void _printCommandUsage(String name, ArgParser root) {
+  if (name == 'restart') {
+    print('localsend restart');
+    print('');
+    print(
+        'Restart the systemd user service `localsend` to clear a stuck receive session.');
+    print('Equivalent to: systemctl --user restart localsend');
+    return;
+  }
   final cmd = root.commands[name]!;
   print('localsend $name [options]');
   print('');

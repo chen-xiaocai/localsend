@@ -21,9 +21,16 @@ class NearbyDevicesState with NearbyDevicesStateMappable {
     required this.signalingDevices,
   });
 
+  /// All devices, deduplicated by fingerprint.
+  /// [devices] is keyed by IP, so one device announcing from multiple
+  /// interfaces (LAN + Tailscale, multiple NICs) would appear once per IP;
+  /// here they are merged into a single entry per fingerprint.
   Map<String, Device> get allDevices {
     final Map<String, Device> allDevices = {};
-    allDevices.addAll(devices);
+    for (final device in devices.values) {
+      final existing = allDevices[device.fingerprint];
+      allDevices[device.fingerprint] = existing == null ? device : device.merge(existing);
+    }
     for (final devices in signalingDevices.values) {
       for (final device in devices) {
         final currentDevice = allDevices[device.fingerprint];

@@ -159,6 +159,11 @@ pub(super) fn create_reqwest_client(
         .danger_accept_invalid_certs(true)
         .tls_info(true)
         .identity(identity)
+        // Peer-to-peer LAN traffic must never go through a system/env proxy:
+        // with the "system-proxy" feature, reqwest would otherwise route
+        // requests to e.g. 192.168.x.x through the OS proxy (Clash etc.),
+        // which cannot reach the peer and fails with "error sending request".
+        .no_proxy()
         .build()?;
 
     Ok(client)

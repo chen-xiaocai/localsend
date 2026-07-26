@@ -75,13 +75,19 @@ class DeviceDiscoveryClient {
 
   Future<DiscoveredPeer?> _probe(
       _TailscaleCandidate candidate, Duration timeout) async {
-    final protocols = <bool>{config.https, true, false};
-    for (final https in protocols) {
-      for (final route in [ApiRoute.info.v2, ApiRoute.info.v1]) {
-        final peer = await _probeRoute(candidate, https, route, timeout);
-        if (peer != null) {
-          return peer;
-        }
+    // 4 种组合(https/http × v2/v1)并行探测。串行时离线设备要等 4 个完整
+    // timeout(5s 默认 → 20s),这是 devices 命令"耗时很长"的主因。
+    final combos = <(bool, String)>[
+      for (final https in <bool>{config.https, true, false})
+        for (final route in [ApiRoute.info.v2, ApiRoute.info.v1]) (https, route),
+    ];
+    final results = await Future.wait(
+      combos.map((c) => _probeRoute(candidate, c.$1, c.$2, timeout)),
+    );
+    // combos 按优先级排列(配置协议优先、v2 优先),取第一个成功的
+    for (final peer in results) {
+      if (peer != null) {
+        return peer;
       }
     }
     return null;
@@ -140,20 +146,21 @@ class DeviceDiscoveryClient {
     }
   }
 
-  Future<List<_TailscaleCandidate>> _tailscaleCandidates() async {
-    final fromStatus = await _tailscaleStatusCandidates();
-    if (fromStatus.isNotEmpty) {
-      return fromStatus;
-    }
+  static const _fallbackCandidates = [
+    _TailscaleCandidate(ip: '100.75.58.59', name: 'macbook-air', system: 'macOS'),
+    _TailscaleCandidate(ip: '100.75.118.59', name: 'mate-30-5g', system: 'Android'),
+    _TailscaleCandidate(ip: '100.93.84.127', name: 'chenxiaobai', system: 'Linux'),
+  ];
 
-    return const [
-      _TailscaleCandidate(
-          ip: '100.75.58.59', name: 'macbook-air', system: 'macOS'),
-      _TailscaleCandidate(
-          ip: '100.75.118.59', name: 'mate-30-5g', system: 'Android'),
-      _TailscaleCandidate(
-          ip: '100.93.84.127', name: 'chenxiaobai', system: 'Linux'),
-    ];
+  Future<List<_TailscaleCandidate>> _tailscaleCandidates() async {
+    // tailscale status 的 Online 标记对空闲节点可能滞后为 false,导致设备漏发现。
+    // 固定候选始终合并进来兜底(探测已并行化,多几个 IP 不增加耗时)。
+    final fromStatus = await _tailscaleStatusCandidates();
+    final byIp = <String, _TailscaleCandidate>{
+      for (final c in _fallbackCandidates) c.ip: c,
+      for (final c in fromStatus) c.ip: c,
+    };
+    return byIp.values.toList();
   }
 
   Future<List<_TailscaleCandidate>> _tailscaleStatusCandidates() async {
@@ -222,12 +229,19 @@ class DeviceDiscoveryClient {
   }
 
   List<DiscoveredPeer> _dedupe(List<DiscoveredPeer> peers) {
-    final byEndpoint = <String, DiscoveredPeer>{};
+    // 优先按 fingerprint 去重:同一设备经 LAN 和 Tailscale 两条路发现时只留
+    // 一条(LAN 直连优先,source.index 小者胜)。无 fingerprint 时退化为端点去重。
+    final byKey = <String, DiscoveredPeer>{};
     for (final peer in peers) {
-      final key = '${peer.ip}:${peer.port}:${peer.protocol}';
-      byEndpoint[key] = peer;
+      final key = peer.fingerprint.isEmpty
+          ? '${peer.ip}:${peer.port}:${peer.protocol}'
+          : peer.fingerprint;
+      final existing = byKey[key];
+      if (existing == null || peer.source.index < existing.source.index) {
+        byKey[key] = peer;
+      }
     }
-    final sorted = byEndpoint.values.toList()
+    final sorted = byKey.values.toList()
       ..sort((a, b) {
         final source = a.source.index.compareTo(b.source.index);
         if (source != 0) return source;
