@@ -1026,6 +1026,15 @@ class Translations$sendTab$picker$en {
 
   /// en: 'Paste'
   String get clipboard => 'Paste';
+
+  /// en: 'Camera'
+  String get camera => 'Camera';
+
+  /// en: 'Take Photo'
+  String get takePhoto => 'Take Photo';
+
+  /// en: 'Record Video'
+  String get takeVideo => 'Record Video';
 }
 
 // Path: sendTab.sendModes

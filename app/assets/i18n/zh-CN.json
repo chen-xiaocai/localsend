@@ -67,7 +67,10 @@
       "media": "媒体",
       "text": "文本",
       "app": "应用",
-      "clipboard": "剪贴板"
+      "clipboard": "剪贴板",
+      "camera": "相机",
+      "takePhoto": "拍照",
+      "takeVideo": "录像"
     },
     "shareIntentInfo": "你也可以通过移动设备中的“分享”功能更简单地发送文件。",
     "nearbyDevices": "附近的设备",

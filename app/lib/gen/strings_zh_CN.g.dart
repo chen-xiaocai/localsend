@@ -904,6 +904,12 @@ class Translations$sendTab$picker$zh_CN extends Translations$sendTab$picker$en {
   String get app => '应用';
   @override
   String get clipboard => '剪贴板';
+  @override
+  String get camera => '相机';
+  @override
+  String get takePhoto => '拍照';
+  @override
+  String get takeVideo => '录像';
 }
 
 // Path: sendTab.sendModes
