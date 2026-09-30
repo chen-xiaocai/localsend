@@ -1,7 +1,9 @@
+mod daemon;
 mod devices;
 mod discovery;
 mod headless;
 mod keys;
+mod list_devices;
 mod receive;
 mod sending;
 mod status;
@@ -80,6 +82,24 @@ pub async fn run(args: Args) -> anyhow::Result<()> {
             paths.clone(),
             to.as_deref().map(TargetSelector::parse).transpose()?,
         ),
+        Some(Command::Receive { only_paired }) => {
+            return daemon::run(storage::Repository::load(&args)?, *only_paired).await;
+        }
+        Some(Command::Devices {
+            timeout,
+            json,
+            no_lan,
+            no_tailscale,
+        }) => {
+            let options = list_devices::Options {
+                timeout: Duration::from_secs(*timeout),
+                json: *json,
+                lan: !*no_lan,
+                tailscale: !*no_tailscale,
+            };
+            return list_devices::run(storage::Repository::load(&args)?, options).await;
+        }
+        Some(Command::Restart { unit }) => return restart_service(unit).await,
         None => (Vec::new(), None),
     };
     for path in &preselected {
@@ -94,6 +114,33 @@ pub async fn run(args: Args) -> anyhow::Result<()> {
         Some(target) => headless::run(storage, target, preselected).await,
         None => run_interactive(storage, preselected).await,
     }
+}
+
+/// Restarts the systemd user unit running `receive` (e.g. to drop a stuck
+/// receive session) and reports whether it came back.
+async fn restart_service(unit: &str) -> anyhow::Result<()> {
+    let restart = tokio::process::Command::new("systemctl")
+        .args(["--user", "restart", unit])
+        .output()
+        .await?;
+    anyhow::ensure!(
+        restart.status.success(),
+        "systemctl --user restart {unit} failed: status={} stdout={} stderr={}",
+        restart.status,
+        String::from_utf8_lossy(&restart.stdout),
+        String::from_utf8_lossy(&restart.stderr)
+    );
+
+    // Give the service a moment, right after the restart it is still "activating".
+    tokio::time::sleep(Duration::from_millis(800)).await;
+    let status = tokio::process::Command::new("systemctl")
+        .args(["--user", "is-active", unit])
+        .output()
+        .await?;
+    let active = String::from_utf8_lossy(&status.stdout).trim().to_string();
+    anyhow::ensure!(active == "active", "{unit} is {active} after the restart");
+    println!("{unit} restarted: {active}");
+    Ok(())
 }
 
 /// The network tasks shared by the interactive and the headless mode: the
@@ -114,7 +161,14 @@ struct Network {
     discovery_stop_tx: oneshot::Sender<()>,
 }
 
-async fn start_network(identity: &Arc<storage::Identity>) -> anyhow::Result<Network> {
+/// Register request timeout for the modes that reach peers over Tailscale:
+/// a cold tunnel easily takes longer than [DEFAULT_DISCOVERY_TIMEOUT].
+const TAILSCALE_DISCOVERY_TIMEOUT: Duration = Duration::from_secs(3);
+
+async fn start_network(
+    identity: &Arc<storage::Identity>,
+    discovery_timeout: Duration,
+) -> anyhow::Result<Network> {
     let (server_tx, server_rx) = mpsc::channel::<ServerEventV2>(16);
     let (server_stop_tx, server_stop_rx) = oneshot::channel::<()>();
     let server = start_with_port(
@@ -149,7 +203,7 @@ async fn start_network(identity: &Arc<storage::Identity>) -> anyhow::Result<Netw
                     cert_pem: identity.cert_pem.clone(),
                     private_key_pem: identity.key_pem.clone(),
                 },
-                timeout: DEFAULT_DISCOVERY_TIMEOUT,
+                timeout: discovery_timeout,
                 event_tx: Some(discovery_tx),
             },
             discovery_stop_rx,
@@ -291,7 +345,7 @@ async fn run_interactive(
         discovery,
         mut discovery_rx,
         discovery_stop_tx,
-    } = start_network(&identity).await?;
+    } = start_network(&identity, DEFAULT_DISCOVERY_TIMEOUT).await?;
     spawn_staged_discovery(
         discovery.clone(),
         events_tx.clone(),

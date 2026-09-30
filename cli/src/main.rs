@@ -1,11 +1,13 @@
 mod app;
 mod banner;
 mod device_list;
+mod peers_file;
 mod picker;
 mod sanitize;
 mod send_task;
 mod slots;
 mod storage;
+mod tailscale;
 mod ui;
 mod util;
 
@@ -24,6 +26,40 @@ pub enum Command {
         #[arg(value_name = "PATH", required = true, num_args = 1..)]
         paths: Vec<PathBuf>,
     },
+
+    /// Receive without a terminal (e.g. as a systemd service): transfer
+    /// requests are accepted automatically, events are printed as log lines
+    Receive {
+        /// Only accept transfers from paired devices, decline all others
+        #[arg(long)]
+        only_paired: bool,
+    },
+
+    /// List the online devices found over the LAN and Tailscale
+    Devices {
+        /// How long to discover, in seconds
+        #[arg(short, long, default_value_t = 5)]
+        timeout: u64,
+
+        /// Print machine-readable JSON
+        #[arg(long)]
+        json: bool,
+
+        /// Skip the LAN (multicast, subnet scan)
+        #[arg(long)]
+        no_lan: bool,
+
+        /// Skip the Tailscale peers
+        #[arg(long)]
+        no_tailscale: bool,
+    },
+
+    /// Restart the systemd user service running `receive`
+    Restart {
+        /// Name of the systemd user unit
+        #[arg(long, default_value = "localsend")]
+        unit: String,
+    },
 }
 
 /// LocalSend CLI
@@ -35,11 +71,11 @@ pub struct Args {
     pub alias: Option<String>,
 
     /// Port of the HTTP server [default: config.toml, else 53317]
-    #[arg(long, env = "LOCALSEND_PORT")]
+    #[arg(short, long, env = "LOCALSEND_PORT")]
     pub port: Option<u16>,
 
     /// Directory where received files are saved [default: config.toml, else the Downloads folder]
-    #[arg(long, env = "LOCALSEND_DESTINATION")]
+    #[arg(long, visible_alias = "dest", env = "LOCALSEND_DESTINATION")]
     pub destination: Option<PathBuf>,
 
     #[command(subcommand)]

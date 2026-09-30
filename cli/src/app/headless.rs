@@ -35,7 +35,7 @@ pub(super) async fn run(
         discovery,
         mut discovery_rx,
         discovery_stop_tx,
-    } = start_network(&identity).await?;
+    } = start_network(&identity, super::TAILSCALE_DISCOVERY_TIMEOUT).await?;
 
     // Probe the destination's address directly when `--to` is an IP.
     let mut known_channels = storage.paired.known_http_channels();
@@ -43,6 +43,15 @@ pub(super) async fn run(
         && !known_channels.contains(&channel)
     {
         known_channels.insert(0, channel);
+    }
+    // Multicast does not cross the tailnet: probe the Tailscale peers too, so
+    // `--to <alias>` also finds devices there.
+    if let Ok(peers) = crate::tailscale::peers().await {
+        for channel in crate::tailscale::channels(&peers, localsend::multicast::DEFAULT_PORT) {
+            if !known_channels.contains(&channel) {
+                known_channels.push(channel);
+            }
+        }
     }
     spawn_staged_discovery(
         discovery.clone(),
