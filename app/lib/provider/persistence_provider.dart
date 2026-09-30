@@ -80,6 +80,7 @@ const _multicastGroupKey = 'ls_multicast_group';
 const _destinationKey = 'ls_destination';
 const _saveToGallery = 'ls_save_to_gallery';
 const _saveToHistory = 'ls_save_to_history';
+const _autoCopyToClipboard = 'ls_auto_copy_to_clipboard';
 const _quickSave = 'ls_quick_save'; // a QuickSaveMode; was a bool until storage version 2 ('ls_quick_save_from_favorites' is merged into this key)
 const _receivePin = 'ls_receive_pin';
 const _autoFinish = 'ls_auto_finish';
@@ -443,6 +444,14 @@ class PersistenceService {
 
   Future<void> setSaveToHistory(bool saveToHistory) async {
     await _prefs.setBool(_saveToHistory, saveToHistory);
+  }
+
+  bool isAutoCopyToClipboard() {
+    return _prefs.getBool(_autoCopyToClipboard) ?? false;
+  }
+
+  Future<void> setAutoCopyToClipboard(bool value) async {
+    await _prefs.setBool(_autoCopyToClipboard, value);
   }
 
   bool getAdvancedSettingsEnabled() {

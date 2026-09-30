@@ -22,6 +22,7 @@ import 'package:localsend_app/provider/security_provider.dart';
 import 'package:localsend_app/provider/selection/selected_receiving_files_provider.dart';
 import 'package:localsend_app/provider/selection/selected_sending_files_provider.dart';
 import 'package:localsend_app/provider/settings_provider.dart';
+import 'package:localsend_app/util/clipboard_helper.dart';
 import 'package:localsend_app/util/native/directories.dart';
 import 'package:localsend_app/util/native/platform_check.dart';
 import 'package:localsend_app/util/native/tray_helper.dart';
@@ -164,6 +165,10 @@ class ReceiveController {
     final message = server.getState().session?.message;
     if (message != null) {
       // Message already received
+      if (server.ref.read(settingsProvider).autoCopyToClipboard) {
+        unawaited(copyToClipboard(text: message));
+      }
+
       await server.ref
           .redux(receiveHistoryProvider)
           .dispatchAsync(
@@ -410,6 +415,10 @@ class ReceiveController {
         ),
       );
       final settings = server.ref.read(settingsProvider);
+      if (settings.autoCopyToClipboard && !hasError) {
+        unawaited(_autoCopySessionFiles(session));
+      }
+
       // Only auto-close fully successful sessions: a failed file may still be
       // retried by the sender (e.g. after a checksum mismatch), which requires
       // the session to stay open.
@@ -694,6 +703,25 @@ class ReceiveController {
       ),
     );
     server.ref.notifier(fileTransferProvider).removeSession(sessionId);
+  }
+}
+
+/// Copies completed files once a receive session has fully finished.
+Future<void> _autoCopySessionFiles(ReceiveSessionState session) async {
+  try {
+    final finished = session.files.values.where((f) => f.desiredName != null && f.path != null && f.errorMessage == null).toList();
+    if (finished.isEmpty) return;
+
+    bool ok;
+    if (finished.length == 1) {
+      final f = finished.first;
+      ok = await copyToClipboard(fileType: f.file.fileType, path: f.path);
+    } else {
+      ok = await copyFilesToClipboard(finished.map((f) => f.path!).toList());
+    }
+    _logger.info('Auto copy to clipboard: $ok (${finished.length} file(s))');
+  } catch (e) {
+    _logger.warning('Auto copy to clipboard failed', e);
   }
 }
 

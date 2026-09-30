@@ -3,6 +3,7 @@
 // Do not manually edit this file.
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
+
 import 'dart:async' as _i5;
 import 'dart:ui' as _i3;
 
@@ -447,6 +448,24 @@ class MockPersistenceService extends _i1.Mock implements _i4.PersistenceService 
   _i5.Future<void> setSaveToHistory(bool? saveToHistory) =>
       (super.noSuchMethod(
             Invocation.method(#setSaveToHistory, [saveToHistory]),
+            returnValue: _i5.Future<void>.value(),
+            returnValueForMissingStub: _i5.Future<void>.value(),
+          )
+          as _i5.Future<void>);
+
+  @override
+  bool isAutoCopyToClipboard() =>
+      (super.noSuchMethod(
+            Invocation.method(#isAutoCopyToClipboard, []),
+            returnValue: false,
+            returnValueForMissingStub: false,
+          )
+          as bool);
+
+  @override
+  _i5.Future<void> setAutoCopyToClipboard(bool? value) =>
+      (super.noSuchMethod(
+            Invocation.method(#setAutoCopyToClipboard, [value]),
             returnValue: _i5.Future<void>.value(),
             returnValueForMissingStub: _i5.Future<void>.value(),
           )

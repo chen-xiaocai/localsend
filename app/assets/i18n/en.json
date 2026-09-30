@@ -125,6 +125,7 @@
       "downloads": "(Downloads)",
       "saveToGallery": "Save media to gallery",
       "saveToHistory": "Save to history",
+      "autoCopyToClipboard": "Copy received files to clipboard automatically",
       "verifyChecksums": "Verify checksums when receiving files"
     },
     "send": {

@@ -993,6 +993,8 @@ class Translations$settingsTab$receive$zh_CN extends Translations$settingsTab$re
   @override
   String get saveToHistory => '保存到历史记录';
   @override
+  String get autoCopyToClipboard => '自动复制收到的文件到剪贴板';
+  @override
   String get verifyChecksums => '接收文件时验证校验和';
 }
 

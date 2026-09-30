@@ -1142,6 +1142,9 @@ class Translations$settingsTab$receive$en {
   /// en: 'Save to history'
   String get saveToHistory => 'Save to history';
 
+  /// en: 'Copy received files to clipboard automatically'
+  String get autoCopyToClipboard => 'Copy received files to clipboard automatically';
+
   /// en: 'Verify checksums when receiving files'
   String get verifyChecksums => 'Verify checksums when receiving files';
 }

@@ -58,6 +58,7 @@ class SettingsService extends PureNotifier<SettingsState> {
     destination: _persistence.getDestination(),
     saveToGallery: _persistence.isSaveToGallery(),
     saveToHistory: _persistence.isSaveToHistory(),
+    autoCopyToClipboard: _persistence.isAutoCopyToClipboard(),
     quickSave: _persistence.getQuickSave() == QuickSaveMode.on,
     quickSaveFromFavorites: _persistence.getQuickSave() == QuickSaveMode.paired,
     receivePin: _persistence.getReceivePin(),
@@ -172,6 +173,13 @@ class SettingsService extends PureNotifier<SettingsState> {
     await _persistence.setSaveToHistory(saveToHistory);
     state = state.copyWith(
       saveToHistory: saveToHistory,
+    );
+  }
+
+  Future<void> setAutoCopyToClipboard(bool autoCopyToClipboard) async {
+    await _persistence.setAutoCopyToClipboard(autoCopyToClipboard);
+    state = state.copyWith(
+      autoCopyToClipboard: autoCopyToClipboard,
     );
   }
 

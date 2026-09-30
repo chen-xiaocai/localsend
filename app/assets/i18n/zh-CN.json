@@ -125,6 +125,7 @@
       "downloads": "(下载)",
       "saveToGallery": "保存到相册",
       "saveToHistory": "保存到历史记录",
+      "autoCopyToClipboard": "自动复制收到的文件到剪贴板",
       "verifyChecksums": "接收文件时验证校验和"
     },
     "send": {
