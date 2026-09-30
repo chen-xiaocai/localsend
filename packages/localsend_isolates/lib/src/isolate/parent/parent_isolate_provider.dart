@@ -56,11 +56,14 @@ class IsolateController extends ReduxNotifier<ParentIsolateState> {
   ParentIsolateState init() => initialState;
 }
 
+final _setupLogger = Logger('IsolateSetup');
+
 /// Starts the required isolates.
 /// Should be called by the main isolate.
 class IsolateSetupAction extends AsyncReduxAction<IsolateController, ParentIsolateState> {
   @override
   Future<ParentIsolateState> reduce() async {
+    final stopwatch = Stopwatch()..start();
     final discovery =
         await TypedIsolates.startIsolate<IsolateTaskStreamResult<DiscoveryResult>, SendToIsolateData<IsolateTask<DiscoveryTask>>, InitialData>(
           task: setupDiscoveryIsolate,
@@ -69,6 +72,9 @@ class IsolateSetupAction extends AsyncReduxAction<IsolateController, ParentIsola
             logLevel: Logger.root.level,
           ),
         );
+
+    _setupLogger.info('startup isolate=discovery ms=${stopwatch.elapsedMilliseconds}');
+    stopwatch.reset();
 
     final httpUpload =
         await TypedIsolates.startIsolate<IsolateTaskStreamResult<HttpUploadEvent>, SendToIsolateData<IsolateTask<BaseHttpUploadTask>>, InitialData>(
@@ -79,6 +85,9 @@ class IsolateSetupAction extends AsyncReduxAction<IsolateController, ParentIsola
           ),
         );
 
+    _setupLogger.info('startup isolate=httpUpload ms=${stopwatch.elapsedMilliseconds}');
+    stopwatch.reset();
+
     final httpServer =
         await TypedIsolates.startIsolate<IsolateTaskStreamResult<HttpServerEvent>, SendToIsolateData<IsolateTask<BaseHttpServerTask>>, InitialData>(
           task: setupHttpServerIsolate,
@@ -87,6 +96,8 @@ class IsolateSetupAction extends AsyncReduxAction<IsolateController, ParentIsola
             logLevel: Logger.root.level,
           ),
         );
+
+    _setupLogger.info('startup isolate=httpServer ms=${stopwatch.elapsedMilliseconds}');
 
     return state.copyWith(
       discovery: discovery,

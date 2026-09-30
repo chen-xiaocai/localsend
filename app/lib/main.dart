@@ -10,6 +10,7 @@ import 'package:localsend_app/provider/local_ip_provider.dart';
 import 'package:localsend_app/provider/network/server/server_provider.dart';
 import 'package:localsend_app/provider/settings_provider.dart';
 import 'package:localsend_app/util/native/platform_check.dart';
+import 'package:localsend_app/util/startup_timer.dart';
 import 'package:localsend_app/util/ui/dynamic_colors.dart';
 import 'package:localsend_app/widget/watcher/life_cycle_watcher.dart';
 import 'package:localsend_app/widget/watcher/shortcut_watcher.dart';
@@ -32,6 +33,8 @@ Future<void> main(List<String> args) async {
     return;
   }
 
+  StartupTimer.mark('preInit');
+  WidgetsBinding.instance.addPostFrameCallback((_) => StartupTimer.mark('firstFrame'));
   runApp(
     RefenaScope.withContainer(
       container: container,

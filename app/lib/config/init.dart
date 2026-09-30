@@ -37,6 +37,7 @@ import 'package:localsend_app/util/native/macos_channel.dart';
 import 'package:localsend_app/util/native/platform_check.dart';
 import 'package:localsend_app/util/native/tray_helper.dart';
 import 'package:localsend_app/util/notification_strings.dart';
+import 'package:localsend_app/util/startup_timer.dart';
 import 'package:localsend_app/util/ui/dynamic_colors.dart';
 import 'package:localsend_app/util/ui/snackbar.dart';
 import 'package:localsend_app/widget/dialogs/local_network_dialog.dart';
@@ -60,11 +61,13 @@ final _logger = Logger('Init');
 /// Will be called before the MaterialApp started
 Future<RefenaContainer> preInit(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
+  StartupTimer.start();
 
   initLogger(args.contains('-v') || args.contains('--verbose') ? Level.ALL : Level.INFO);
   MapperContainer.globals.use(const FileDtoMapper());
 
   await RustLib.init();
+  StartupTimer.mark('RustLib.init');
 
   if (kDebugMode) {
     try {
@@ -84,7 +87,10 @@ Future<RefenaContainer> preInit(List<String> args) async {
     await enableContextMenu();
   }
 
+  StartupTimer.mark('persistence+dynamicColors');
+
   await initI18n();
+  StartupTimer.mark('initI18n');
 
   TransferNotification.init(notificationStrings);
 
@@ -175,7 +181,10 @@ Future<RefenaContainer> preInit(List<String> args) async {
     }),
   );
 
+  StartupTimer.mark('deviceInfo+container');
+
   await container.redux(parentIsolateProvider).dispatchAsync(IsolateSetupAction());
+  StartupTimer.mark('IsolateSetupAction');
 
   return container;
 }
@@ -204,8 +213,10 @@ Future<void> postInit(BuildContext context, Ref ref, bool appStart) async {
     }
   }
 
+  StartupTimer.mark('postInit:before-server');
   try {
     await ref.notifier(serverProvider).startServerFromSettings();
+    StartupTimer.mark('startServerFromSettings');
   } catch (e) {
     if (context.mounted) {
       context.showSnackBar(e.toString());
