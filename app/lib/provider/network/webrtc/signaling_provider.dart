@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:dart_mappable/dart_mappable.dart';
-import 'package:flutter/foundation.dart';
 import 'package:localsend_app/provider/device_info_provider.dart';
 import 'package:localsend_app/provider/favorites_provider.dart';
 import 'package:localsend_app/provider/network/nearby_devices_provider.dart';
@@ -11,26 +10,27 @@ import 'package:localsend_app/provider/security_provider.dart';
 import 'package:localsend_app/provider/settings_provider.dart';
 import 'package:localsend_isolates/constants.dart';
 import 'package:localsend_isolates/model/device.dart';
-import 'package:localsend_isolates/rust/api/crypto.dart' as crypto;
 import 'package:localsend_isolates/rust/api/model.dart' as rust;
 import 'package:localsend_isolates/rust/api/webrtc.dart';
 import 'package:refena_flutter/refena_flutter.dart';
 
 part 'signaling_provider.mapper.dart';
 
-/// WebRTC (and therefore the signaling connection) is disabled for now.
-const webRTCEnabled = false;
+/// WebRTC (and therefore the signaling connection) is enabled in this fork.
+const webRTCEnabled = true;
 
 @MappableClass()
 class SignalingState with SignalingStateMappable {
   final List<String> signalingServers;
   final List<String> stunServers;
   final Map<String, LsSignalingConnection> connections;
+  final Set<String> connectingServers;
 
   SignalingState({
     required this.signalingServers,
     required this.stunServers,
     required this.connections,
+    required this.connectingServers,
   });
 }
 
@@ -53,6 +53,7 @@ class SignalingService extends ReduxNotifier<SignalingState> {
       signalingServers: _persistence.getSignalingServers() ?? ['wss://public.localsend.org/v1/ws'],
       stunServers: _persistence.getStunServers() ?? ['stun:stun.localsend.org:3478'],
       connections: {},
+      connectingServers: {},
     );
   }
 }
@@ -61,6 +62,9 @@ class SetupSignalingConnection extends ReduxAction<SignalingService, SignalingSt
   @override
   SignalingState reduce() {
     for (final signalingServer in state.signalingServers) {
+      if (state.connections.containsKey(signalingServer) || state.connectingServers.contains(signalingServer)) {
+        continue;
+      }
       // ignore: discarded_futures
       global.dispatchAsync(_SetupSignalingConnection(signalingServer: signalingServer));
     }
@@ -76,25 +80,29 @@ class _SetupSignalingConnection extends AsyncGlobalAction {
 
   @override
   Future<void> reduce() async {
+    final signalingState = ref.read(signalingProvider);
+    if (signalingState.connections.containsKey(signalingServer) || signalingState.connectingServers.contains(signalingServer)) {
+      return;
+    }
+
+    ref.redux(signalingProvider).dispatch(_MarkConnectingAction(signalingServer: signalingServer, connecting: true));
+
     final settings = ref.read(settingsProvider);
     final deviceInfo = ref.read(deviceInfoProvider);
-
-    // TODO: Use persistent key
-    final key = await crypto.generateKeyPair();
-    if (kDebugMode) {
-      print('private key: ${key.privateKey}');
-    }
+    final securityContext = ref.read(securityProvider);
+    final localFingerprint = securityContext.certificateHash;
 
     LsSignalingConnection? connection;
     final stream = connect(
-      uri: 'wss://public.localsend.org/v1/ws',
+      uri: signalingServer,
       info: ProposingClientInfo(
         alias: settings.alias,
         version: protocolVersion,
         deviceModel: deviceInfo.deviceModel,
         deviceType: deviceInfo.deviceType.toRustDeviceType(),
+        token: localFingerprint,
       ),
-      privateKey: key.privateKey,
+      privateKey: securityContext.privateKey,
       onConnection: (c) {
         connection = c;
 
@@ -114,24 +122,12 @@ class _SetupSignalingConnection extends AsyncGlobalAction {
         switch (message) {
           case WsServerMessage_Hello():
             for (final d in message.peers) {
-              ref
-                  .redux(nearbyDevicesProvider)
-                  .dispatch(
-                    RegisterSignalingDeviceAction(
-                      d.toDevice(signalingServer),
-                    ),
-                  );
+              _registerSignalingPeer(d, signalingServer, localFingerprint);
             }
             break;
           case WsServerMessage_Join(peer: final peer):
           case WsServerMessage_Update(peer: final peer):
-            ref
-                .redux(nearbyDevicesProvider)
-                .dispatch(
-                  RegisterSignalingDeviceAction(
-                    peer.toDevice(signalingServer),
-                  ),
-                );
+            _registerSignalingPeer(peer, signalingServer, localFingerprint);
             break;
           case WsServerMessage_Left():
             ref
@@ -162,10 +158,46 @@ class _SetupSignalingConnection extends AsyncGlobalAction {
         }
       }
     } finally {
+      ref.redux(signalingProvider).dispatch(_MarkConnectingAction(signalingServer: signalingServer, connecting: false));
       ref.redux(signalingProvider).dispatch(_RemoveConnectionAction(signalingServer: signalingServer));
     }
+  }
 
-    return state;
+  void _registerSignalingPeer(ClientInfo peer, String signalingServer, String localFingerprint) {
+    if (peer.token == localFingerprint) {
+      return;
+    }
+
+    ref
+        .redux(nearbyDevicesProvider)
+        .dispatch(
+          RegisterSignalingDeviceAction(
+            peer.toDevice(signalingServer),
+            localFingerprint: localFingerprint,
+          ),
+        );
+  }
+}
+
+class _MarkConnectingAction extends ReduxAction<SignalingService, SignalingState> {
+  final String signalingServer;
+  final bool connecting;
+
+  _MarkConnectingAction({
+    required this.signalingServer,
+    required this.connecting,
+  });
+
+  @override
+  SignalingState reduce() {
+    final connectingServers = {...state.connectingServers};
+    if (connecting) {
+      connectingServers.add(signalingServer);
+    } else {
+      connectingServers.remove(signalingServer);
+    }
+
+    return state.copyWith(connectingServers: connectingServers);
   }
 }
 
@@ -180,11 +212,14 @@ class _SetConnectionAction extends ReduxAction<SignalingService, SignalingState>
 
   @override
   SignalingState reduce() {
+    final connectingServers = {...state.connectingServers}..remove(signalingServer);
+
     return state.copyWith(
       connections: {
         ...state.connections,
         signalingServer: connection,
       },
+      connectingServers: connectingServers,
     );
   }
 }
