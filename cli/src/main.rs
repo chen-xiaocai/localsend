@@ -67,15 +67,15 @@ pub enum Command {
 #[command(name = "localsend-cli", version, about, after_help = HELP_SECTIONS)]
 pub struct Args {
     /// Device name shown to other devices [default: config.toml, else the hostname]
-    #[arg(long, env = "LOCALSEND_ALIAS")]
+    #[arg(long, global = true, env = "LOCALSEND_ALIAS")]
     pub alias: Option<String>,
 
     /// Port of the HTTP server [default: config.toml, else 53317]
-    #[arg(short, long, env = "LOCALSEND_PORT")]
+    #[arg(short, long, global = true, env = "LOCALSEND_PORT")]
     pub port: Option<u16>,
 
     /// Directory where received files are saved [default: config.toml, else the Downloads folder]
-    #[arg(long, visible_alias = "dest", env = "LOCALSEND_DESTINATION")]
+    #[arg(long, visible_alias = "dest", global = true, env = "LOCALSEND_DESTINATION")]
     pub destination: Option<PathBuf>,
 
     #[command(subcommand)]
