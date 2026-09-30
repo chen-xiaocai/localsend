@@ -11,7 +11,7 @@ import 'package:uuid/uuid.dart';
 
 part 'webrtc.freezed.dart';
 
-// These functions are ignored because they are not marked as `pub`: `sign`
+// These functions are ignored because they are not marked as `pub`: `to_client_info`
 
 Stream<WsServerMessage> connect({
   required String uri,
@@ -190,6 +190,8 @@ class ProposingClientInfo {
   final String version;
   final String? deviceModel;
   final DeviceType? deviceType;
+
+  /// Stable device token (typically the certificate fingerprint).
   final String token;
 
   const ProposingClientInfo({
