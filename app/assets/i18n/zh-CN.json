@@ -208,7 +208,14 @@
     "apps": "{n} 个应用"
   },
   "selectedFilesPage": {
-    "deleteAll": "全部删除"
+    "deleteAll": "全部删除",
+    "crop": "裁剪"
+  },
+  "imageCropPage": {
+    "title": "裁剪",
+    "rotate": "旋转",
+    "retake": "重拍",
+    "failed": "裁剪失败"
   },
   "deviceDetailsPage": {
     "title": "设备详情",

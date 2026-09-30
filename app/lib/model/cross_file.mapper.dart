@@ -16,6 +16,7 @@ class CrossFileMapper extends ClassMapperBase<CrossFile> {
     if (_instance == null) {
       MapperContainer.globals.use(_instance = CrossFileMapper._());
       FileTypeMapper.ensureInitialized();
+      CropStateMapper.ensureInitialized();
     }
     return _instance!;
   }
@@ -53,6 +54,18 @@ class CrossFileMapper extends ClassMapperBase<CrossFile> {
     'lastAccessed',
     _$lastAccessed,
   );
+  static String? _$originalPath(CrossFile v) => v.originalPath;
+  static const Field<CrossFile, String> _f$originalPath = Field(
+    'originalPath',
+    _$originalPath,
+    opt: true,
+  );
+  static CropState? _$cropState(CrossFile v) => v.cropState;
+  static const Field<CrossFile, CropState> _f$cropState = Field(
+    'cropState',
+    _$cropState,
+    opt: true,
+  );
 
   @override
   final MappableFields<CrossFile> fields = const {
@@ -65,6 +78,8 @@ class CrossFileMapper extends ClassMapperBase<CrossFile> {
     #bytes: _f$bytes,
     #lastModified: _f$lastModified,
     #lastAccessed: _f$lastAccessed,
+    #originalPath: _f$originalPath,
+    #cropState: _f$cropState,
   };
 
   static CrossFile _instantiate(DecodingData data) {
@@ -78,6 +93,8 @@ class CrossFileMapper extends ClassMapperBase<CrossFile> {
       bytes: data.dec(_f$bytes),
       lastModified: data.dec(_f$lastModified),
       lastAccessed: data.dec(_f$lastAccessed),
+      originalPath: data.dec(_f$originalPath),
+      cropState: data.dec(_f$cropState),
     );
   }
 
@@ -141,6 +158,7 @@ extension CrossFileValueCopy<$R, $Out> on ObjectCopyWith<$R, CrossFile, $Out> {
 abstract class CrossFileCopyWith<$R, $In extends CrossFile, $Out>
     implements ClassCopyWith<$R, $In, $Out> {
   ListCopyWith<$R, int, ObjectCopyWith<$R, int, int>>? get bytes;
+  CropStateCopyWith<$R, CropState, CropState>? get cropState;
   $R call({
     String? name,
     FileType? fileType,
@@ -151,6 +169,8 @@ abstract class CrossFileCopyWith<$R, $In extends CrossFile, $Out>
     List<int>? bytes,
     String? lastModified,
     String? lastAccessed,
+    String? originalPath,
+    CropState? cropState,
   });
   CrossFileCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(Then<$Out2, $R2> t);
 }
@@ -173,6 +193,9 @@ class _CrossFileCopyWithImpl<$R, $Out>
         )
       : null;
   @override
+  CropStateCopyWith<$R, CropState, CropState>? get cropState =>
+      $value.cropState?.copyWith.$chain((v) => call(cropState: v));
+  @override
   $R call({
     String? name,
     FileType? fileType,
@@ -183,6 +206,8 @@ class _CrossFileCopyWithImpl<$R, $Out>
     Object? bytes = $none,
     Object? lastModified = $none,
     Object? lastAccessed = $none,
+    Object? originalPath = $none,
+    Object? cropState = $none,
   }) => $apply(
     FieldCopyWithData({
       if (name != null) #name: name,
@@ -194,6 +219,8 @@ class _CrossFileCopyWithImpl<$R, $Out>
       if (bytes != $none) #bytes: bytes,
       if (lastModified != $none) #lastModified: lastModified,
       if (lastAccessed != $none) #lastAccessed: lastAccessed,
+      if (originalPath != $none) #originalPath: originalPath,
+      if (cropState != $none) #cropState: cropState,
     }),
   );
   @override
@@ -207,6 +234,8 @@ class _CrossFileCopyWithImpl<$R, $Out>
     bytes: data.get(#bytes, or: $value.bytes),
     lastModified: data.get(#lastModified, or: $value.lastModified),
     lastAccessed: data.get(#lastAccessed, or: $value.lastAccessed),
+    originalPath: data.get(#originalPath, or: $value.originalPath),
+    cropState: data.get(#cropState, or: $value.cropState),
   );
 
   @override

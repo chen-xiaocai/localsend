@@ -60,6 +60,8 @@ class TranslationsZhCn extends Translations with BaseTranslations<AppLocale, Tra
   @override
   late final Translations$selectedFilesPage$zh_CN selectedFilesPage = Translations$selectedFilesPage$zh_CN.internal(_root);
   @override
+  late final Translations$imageCropPage$zh_CN imageCropPage = Translations$imageCropPage$zh_CN.internal(_root);
+  @override
   late final Translations$deviceDetailsPage$zh_CN deviceDetailsPage = Translations$deviceDetailsPage$zh_CN.internal(_root);
   @override
   late final Translations$verifyPage$zh_CN verifyPage = Translations$verifyPage$zh_CN.internal(_root);
@@ -344,6 +346,25 @@ class Translations$selectedFilesPage$zh_CN extends Translations$selectedFilesPag
   // Translations
   @override
   String get deleteAll => '全部删除';
+  @override
+  String get crop => '裁剪';
+}
+
+// Path: imageCropPage
+class Translations$imageCropPage$zh_CN extends Translations$imageCropPage$en {
+  Translations$imageCropPage$zh_CN.internal(TranslationsZhCn root) : this._root = root, super.internal(root);
+
+  final TranslationsZhCn _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get title => '裁剪';
+  @override
+  String get rotate => '旋转';
+  @override
+  String get retake => '重拍';
+  @override
+  String get failed => '裁剪失败';
 }
 
 // Path: deviceDetailsPage

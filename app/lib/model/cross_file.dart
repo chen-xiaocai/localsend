@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:dart_mappable/dart_mappable.dart';
+import 'package:localsend_app/model/crop_state.dart';
 import 'package:localsend_isolates/model/file_type.dart';
 import 'package:wechat_assets_picker/wechat_assets_picker.dart';
 
@@ -20,6 +21,13 @@ class CrossFile with CrossFileMappable {
   final String? lastModified; // RFC 3339; a string because DateTime would truncate to microseconds
   final String? lastAccessed; // RFC 3339
 
+  /// The unmodified image this file was cropped from, kept so the crop can be
+  /// adjusted again. Null if the file has not been cropped.
+  final String? originalPath;
+
+  /// The crop applied to [originalPath] to produce [path].
+  final CropState? cropState;
+
   const CrossFile({
     required this.name,
     required this.fileType,
@@ -30,11 +38,13 @@ class CrossFile with CrossFileMappable {
     required this.bytes,
     required this.lastModified,
     required this.lastAccessed,
+    this.originalPath,
+    this.cropState,
   });
 
   /// Custom toString() to avoid printing the bytes.
   @override
   String toString() {
-    return 'CrossFile(name: $name, fileType: $fileType, size: $size, thumbnail: ${thumbnail != null ? thumbnail!.length : 'null'}, asset: $asset, path: $path, bytes: ${bytes != null ? bytes!.length : 'null'})';
+    return 'CrossFile(name: $name, fileType: $fileType, size: $size, thumbnail: ${thumbnail != null ? thumbnail!.length : 'null'}, asset: $asset, path: $path, bytes: ${bytes != null ? bytes!.length : 'null'}, originalPath: $originalPath, cropState: $cropState)';
   }
 }

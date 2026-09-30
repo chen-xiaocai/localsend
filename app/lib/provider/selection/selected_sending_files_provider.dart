@@ -283,6 +283,22 @@ class RemoveSelectedFileAction extends ReduxAction<SelectedSendingFilesNotifier,
   }
 }
 
+/// Replaces the file at the given [index], e.g. after cropping it again.
+class ReplaceSelectedFileAction extends ReduxAction<SelectedSendingFilesNotifier, List<CrossFile>> {
+  final int index;
+  final CrossFile file;
+
+  ReplaceSelectedFileAction({required this.index, required this.file});
+
+  @override
+  List<CrossFile> reduce() {
+    if (index < 0 || index >= state.length) {
+      return state;
+    }
+    return List<CrossFile>.unmodifiable([...state]..[index] = file);
+  }
+}
+
 /// Loads the selection from the arguments of the app start.
 /// Returns `true` if files were added.
 class LoadSelectionFromArgsAction extends AsyncReduxActionWithResult<SelectedSendingFilesNotifier, List<CrossFile>, bool> {

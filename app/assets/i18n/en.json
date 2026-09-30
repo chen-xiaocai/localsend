@@ -208,7 +208,14 @@
     "apps": "{n} Apps"
   },
   "selectedFilesPage": {
-    "deleteAll": "Delete all"
+    "deleteAll": "Delete all",
+    "crop": "Crop"
+  },
+  "imageCropPage": {
+    "title": "Crop",
+    "rotate": "Rotate",
+    "retake": "Retake",
+    "failed": "Crop failed"
   },
   "deviceDetailsPage": {
     "title": "Device Details",

@@ -99,3 +99,8 @@ android.applicationVariants.all { variant ->
         }
     }
 }
+
+dependencies {
+    // FileProvider for the camera capture output
+    implementation "androidx.core:core:1.13.1"
+}

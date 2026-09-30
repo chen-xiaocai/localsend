@@ -12,7 +12,9 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.DocumentsContract
+import android.provider.MediaStore
 import android.provider.Settings
+import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodCall
@@ -21,6 +23,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+import java.util.UUID
+import java.io.File
 
 
 private const val CHANNEL = "org.localsend.localsend_app/localsend"
@@ -28,6 +32,7 @@ private const val REQUEST_CODE_PICK_DIRECTORY = 1
 private const val REQUEST_CODE_PICK_DIRECTORY_PATH = 2
 private const val REQUEST_CODE_PICK_FILE = 3
 private const val REQUEST_CODE_LOCAL_NETWORK = 4
+private const val REQUEST_CODE_CAPTURE_PHOTO = 5
 
 // Not available as a constant in compileSdk 36.
 private const val PERMISSION_ACCESS_LOCAL_NETWORK = "android.permission.ACCESS_LOCAL_NETWORK"
@@ -36,6 +41,8 @@ private const val API_LEVEL_ANDROID_17 = 37
 class MainActivity : FlutterActivity() {
     private var pendingResult: MethodChannel.Result? = null
     private var pendingPermissionResult: MethodChannel.Result? = null
+    private var pendingCaptureResult: MethodChannel.Result? = null
+    private var pendingCaptureFile: File? = null
 
     /// share_handler drops share intents arriving via onNewIntent while the Dart side
     /// is not subscribed to its media stream yet, which happens when this singleTask
@@ -147,6 +154,10 @@ class MainActivity : FlutterActivity() {
                     result.success(isAnimationsEnabled())
                 }
 
+                "cropImage" -> handleCropImage(call, result)
+
+                "capturePhoto" -> handleCapturePhoto(result)
+
                 "getDownloadsDirectory" -> {
                     result.success(getDownloadsDirectory())
                 }
@@ -185,6 +196,57 @@ class MainActivity : FlutterActivity() {
     @Suppress("DEPRECATION")
     private fun getDownloadsDirectory(): String {
         return Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath
+    }
+
+    /**
+     * Takes a photo with the system camera app.
+     * `quickCapture` asks the camera app to return right after the shutter instead of
+     * showing its own review screen; camera apps that do not support it ignore the extra.
+     */
+    private fun handleCapturePhoto(result: MethodChannel.Result) {
+        if (pendingCaptureResult != null) {
+            result.error("ALREADY_ACTIVE", "A capture is already in progress", null)
+            return
+        }
+        val file = File(cacheDir, "camera_${UUID.randomUUID()}.jpg")
+        val uri = FileProvider.getUriForFile(this, "$packageName.localsend.fileprovider", file)
+        val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
+            putExtra(MediaStore.EXTRA_OUTPUT, uri)
+            putExtra("android.intent.extra.quickCapture", true)
+            addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        try {
+            pendingCaptureResult = result
+            pendingCaptureFile = file
+            startActivityForResult(intent, REQUEST_CODE_CAPTURE_PHOTO)
+        } catch (e: SecurityException) {
+            // The app declares the CAMERA permission (e.g. via a plugin) but it is not granted.
+            pendingCaptureResult = null
+            pendingCaptureFile = null
+            result.error("CAMERA_PERMISSION", e.toString(), null)
+        } catch (e: Exception) {
+            pendingCaptureResult = null
+            pendingCaptureFile = null
+            result.error("NO_CAMERA_APP", e.toString(), null)
+        }
+    }
+
+    private fun handleCropImage(call: MethodCall, result: MethodChannel.Result) {
+        val sourcePath = call.argument<String>("path")!!
+        val left = call.argument<Double>("left")!!
+        val top = call.argument<Double>("top")!!
+        val right = call.argument<Double>("right")!!
+        val bottom = call.argument<Double>("bottom")!!
+        val quarterTurns = call.argument<Int>("quarterTurns")!!
+        val quality = call.argument<Int>("quality")!!
+        Thread {
+            try {
+                val outputPath = ImageCropper.crop(sourcePath, left, top, right, bottom, quarterTurns, quality, cacheDir)
+                runOnUiThread { result.success(outputPath) }
+            } catch (e: Throwable) {
+                runOnUiThread { result.error("CROP_FAILED", e.toString(), null) }
+            }
+        }.start()
     }
 
     private fun isAnimationsEnabled() : Boolean {
@@ -347,6 +409,20 @@ class MainActivity : FlutterActivity() {
     @Override
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_CODE_CAPTURE_PHOTO) {
+            // With EXTRA_OUTPUT the camera app returns no data, the photo is in the file.
+            val file = pendingCaptureFile
+            val result = pendingCaptureResult
+            pendingCaptureFile = null
+            pendingCaptureResult = null
+            if (resultCode == Activity.RESULT_OK && file != null && file.length() > 0) {
+                result?.success(file.path)
+            } else {
+                file?.delete()
+                result?.success(null)
+            }
+            return
+        }
         if (resultCode == Activity.RESULT_CANCELED) {
             pendingResult?.error("CANCELED", "Canceled", null)
             pendingResult = null

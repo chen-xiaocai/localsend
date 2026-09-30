@@ -82,6 +82,17 @@
 
         </activity>
 
+        <!-- localsend: shares the camera output file with the camera app -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.localsend.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/localsend_file_paths" />
+        </provider>
+
         <!-- Quick tile to launch the app -->
         <service
             android:name=".QuickTileService"

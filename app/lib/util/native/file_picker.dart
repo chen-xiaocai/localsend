@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
@@ -9,6 +10,7 @@ import 'package:localsend_app/config/theme.dart';
 import 'package:localsend_app/gen/strings.g.dart';
 import 'package:localsend_app/model/cross_file.dart';
 import 'package:localsend_app/pages/apk_picker_page.dart';
+import 'package:localsend_app/pages/image_crop_page.dart';
 import 'package:localsend_app/provider/device_info_provider.dart';
 import 'package:localsend_app/provider/selection/selected_sending_files_provider.dart';
 import 'package:localsend_app/util/determine_image_type.dart';
@@ -418,14 +420,13 @@ Future<void> _pickCamera(BuildContext context, Ref ref) async {
   }
 
   try {
-    final picker = ImagePicker();
-    final XFile? result;
     if (choice == _CameraChoice.photo) {
-      result = await picker.pickImage(source: ImageSource.camera);
-    } else {
-      result = await picker.pickVideo(source: ImageSource.camera, maxDuration: const Duration(minutes: 10));
+      // ignore: use_build_context_synchronously
+      await _capturePhotoAndCrop(context, ref);
+      return;
     }
 
+    final result = await ImagePicker().pickVideo(source: ImageSource.camera, maxDuration: const Duration(minutes: 10));
     if (result == null) {
       _logger.info('User canceled camera');
       return;
@@ -444,6 +445,78 @@ Future<void> _pickCamera(BuildContext context, Ref ref) async {
     if (context.mounted) {
       await showDialog(context: context, builder: (_) => const NoPermissionDialog());
     }
+  }
+}
+
+/// Shutter -> crop page -> selection. The original photo is kept so the crop can be adjusted later.
+Future<void> _capturePhotoAndCrop(BuildContext context, Ref ref) async {
+  while (true) {
+    final captured = await _capturePhoto();
+    if (captured == null) {
+      _logger.info('User canceled camera');
+      return;
+    }
+
+    if (!context.mounted) {
+      return;
+    }
+
+    final result = await context.push<ImageCropResult, ImageCropPage>(
+      () => ImageCropPage(sourcePath: captured, allowRetake: true),
+    );
+    switch (result) {
+      case null:
+        // Discarded: nothing is added.
+        await _deleteQuietly(captured);
+        return;
+      case ImageCropRetake():
+        await _deleteQuietly(captured);
+        continue;
+      case ImageCropDone(:final path, :final state):
+        final name = _cameraFileName(DateTime.now());
+        await ref
+            .redux(selectedSendingFilesProvider)
+            .dispatchAsync(
+              AddFilesAction(
+                files: [XFile(path)],
+                converter: (XFile file) async {
+                  final crossFile = await CrossFileConverters.convertXFile(file);
+                  return crossFile.copyWith(name: name, originalPath: captured, cropState: state);
+                },
+              ),
+            );
+        return;
+    }
+  }
+}
+
+/// Takes a photo with the system camera app (asking it to skip its review screen).
+/// Requests the camera permission if the camera app requires it.
+Future<String?> _capturePhoto() async {
+  try {
+    return await android_channel.capturePhotoAndroid();
+  } on PlatformException catch (e) {
+    if (e.code != 'CAMERA_PERMISSION') {
+      rethrow;
+    }
+    final status = await Permission.camera.request();
+    if (!status.isGranted) {
+      rethrow;
+    }
+    return await android_channel.capturePhotoAndroid();
+  }
+}
+
+String _cameraFileName(DateTime now) {
+  return 'IMG_${now.year}${now.month.twoDigitString}${now.day.twoDigitString}_'
+      '${now.hour.twoDigitString}${now.minute.twoDigitString}${now.second.twoDigitString}.jpg';
+}
+
+Future<void> _deleteQuietly(String path) async {
+  try {
+    await File(path).delete();
+  } catch (e) {
+    _logger.warning('Failed to delete $path', e);
   }
 }
 

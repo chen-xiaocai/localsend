@@ -55,6 +55,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
   late final Translations$receiveHistoryPage$en receiveHistoryPage = Translations$receiveHistoryPage$en.internal(_root);
   late final Translations$apkPickerPage$en apkPickerPage = Translations$apkPickerPage$en.internal(_root);
   late final Translations$selectedFilesPage$en selectedFilesPage = Translations$selectedFilesPage$en.internal(_root);
+  late final Translations$imageCropPage$en imageCropPage = Translations$imageCropPage$en.internal(_root);
   late final Translations$deviceDetailsPage$en deviceDetailsPage = Translations$deviceDetailsPage$en.internal(_root);
   late final Translations$verifyPage$en verifyPage = Translations$verifyPage$en.internal(_root);
   late final Translations$receivePage$en receivePage = Translations$receivePage$en.internal(_root);
@@ -385,6 +386,30 @@ class Translations$selectedFilesPage$en {
 
   /// en: 'Delete all'
   String get deleteAll => 'Delete all';
+
+  /// en: 'Crop'
+  String get crop => 'Crop';
+}
+
+// Path: imageCropPage
+class Translations$imageCropPage$en {
+  Translations$imageCropPage$en.internal(this._root);
+
+  final Translations _root; // ignore: unused_field
+
+  // Translations
+
+  /// en: 'Crop'
+  String get title => 'Crop';
+
+  /// en: 'Rotate'
+  String get rotate => 'Rotate';
+
+  /// en: 'Retake'
+  String get retake => 'Retake';
+
+  /// en: 'Crop failed'
+  String get failed => 'Crop failed';
 }
 
 // Path: deviceDetailsPage

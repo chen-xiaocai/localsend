@@ -115,3 +115,36 @@ class FileInfo with FileInfoMappable {
     required this.lastModified,
   });
 }
+
+/// Crops [path] to the normalized [sourceRect] of the upright image, rotates it
+/// by [quarterTurns] × 90° clockwise and writes a JPEG into the cache directory.
+/// Returns the path of the new file.
+Future<String> cropImageAndroid({
+  required String path,
+  required double left,
+  required double top,
+  required double right,
+  required double bottom,
+  required int quarterTurns,
+  int quality = 92,
+}) async {
+  final result = await _methodChannel.invokeMethod<String>('cropImage', {
+    'path': path,
+    'left': left,
+    'top': top,
+    'right': right,
+    'bottom': bottom,
+    'quarterTurns': quarterTurns,
+    'quality': quality,
+  });
+  return result!;
+}
+
+/// Takes a photo with the system camera app, asking it to skip its review screen.
+/// Returns the path of the photo, or null if the user canceled.
+///
+/// Throws a [PlatformException] with code `CAMERA_PERMISSION` if the camera
+/// permission must be granted first.
+Future<String?> capturePhotoAndroid() async {
+  return await _methodChannel.invokeMethod<String>('capturePhoto');
+}

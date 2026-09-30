@@ -2,7 +2,9 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:localsend_app/gen/strings.g.dart';
+import 'package:localsend_app/pages/image_preview_page.dart';
 import 'package:localsend_app/provider/selection/selected_sending_files_provider.dart';
+import 'package:localsend_app/util/native/crop_selected_file.dart';
 import 'package:localsend_app/util/native/open_file.dart';
 import 'package:localsend_app/util/ui/nav_bar_padding.dart';
 import 'package:localsend_app/widget/dialogs/message_input_dialog.dart';
@@ -79,7 +81,11 @@ class SelectedFilesPage extends StatelessWidget {
                       splashFactory: NoSplash.splashFactory,
                       highlightColor: Colors.transparent,
                       hoverColor: Colors.transparent,
-                      onTap: file.path != null ? () async => openFile(context, file.fileType, file.path!) : null,
+                      onTap: file.path == null
+                          ? null
+                          : file.fileType == FileType.image && !file.path!.startsWith('content://')
+                          ? () async => await context.push(() => ImagePreviewPage(initialFile: file))
+                          : () async => openFile(context, file.fileType, file.path!),
                       child: Card(
                         child: Padding(
                           padding: const EdgeInsets.all(10),
@@ -117,6 +123,15 @@ class SelectedFilesPage extends StatelessWidget {
                                     }
                                   },
                                   child: const Icon(Icons.edit),
+                                ),
+                              if (canCropFile(file))
+                                TextButton(
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: Theme.of(context).colorScheme.onSurface,
+                                    iconSize: 24,
+                                  ),
+                                  onPressed: () async => await cropSelectedFile(context, ref, file),
+                                  child: const Icon(Icons.crop),
                                 ),
                               TextButton(
                                 style: TextButton.styleFrom(
