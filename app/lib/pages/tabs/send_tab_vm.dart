@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:localsend_app/model/cross_file.dart';
@@ -34,6 +36,14 @@ class SendTabVm {
   final Future<void> Function(BuildContext context, Device device) onTapDevice;
   final Future<void> Function(BuildContext context, Device device) onTapDeviceMultiSend;
 
+  /// Fingerprints of the devices checked in the multiple recipients mode.
+  final Set<String> checkedDevices;
+  final void Function(Device device, bool checked) onCheckDevice;
+  final void Function(bool checked) onCheckAllDevices;
+
+  /// Sends the selection to all checked devices at once.
+  final Future<void> Function(BuildContext context) onSendToCheckedDevices;
+
   const SendTabVm({
     required this.sendMode,
     required this.selectedFiles,
@@ -45,6 +55,10 @@ class SendTabVm {
     required this.onTapSendMode,
     required this.onTapDevice,
     required this.onTapDeviceMultiSend,
+    required this.checkedDevices,
+    required this.onCheckDevice,
+    required this.onCheckAllDevices,
+    required this.onSendToCheckedDevices,
   });
 }
 
@@ -54,6 +68,7 @@ final sendTabVmProvider = ViewProvider((ref) {
   final localIps = ref.watch(localIpProvider).localIps;
   final nearbyDevices = ref.watch(nearbyDevicesProvider).allDevices.values;
   final favoriteDevices = ref.watch(favoritesProvider);
+  final checkedDevices = ref.watch(multiSendCheckedDevicesProvider);
 
   return SendTabVm(
     sendMode: sendMode,
@@ -217,8 +232,62 @@ final sendTabVmProvider = ViewProvider((ref) {
             background: true,
           );
     },
+    checkedDevices: checkedDevices,
+    onCheckDevice: (device, checked) {
+      ref
+          .notifier(multiSendCheckedDevicesProvider)
+          .setState((old) => checked ? {...old, device.fingerprint} : ({...old}..remove(device.fingerprint)));
+    },
+    onCheckAllDevices: (checked) {
+      ref.notifier(multiSendCheckedDevicesProvider).setState((_) => checked ? nearbyDevices.map((d) => d.fingerprint).toSet() : {});
+    },
+    onSendToCheckedDevices: (context) async {
+      final targets = nearbyDevices.where((d) => checkedDevices.contains(d.fingerprint)).toList();
+      if (targets.isEmpty) {
+        return;
+      }
+
+      var files = ref.read(selectedSendingFilesProvider);
+      if (files.isEmpty) {
+        await AddFileDialog.open(
+          context: context,
+          options: pickerOptions,
+        );
+      }
+      files = ref.read(selectedSendingFilesProvider);
+      if (files.isEmpty) {
+        return;
+      }
+
+      for (final device in targets) {
+        final session = ref.read(sendProvider).values.firstWhereOrNull((s) => s.target.ip == device.ip);
+        if (session != null) {
+          if (session.status == SessionStatus.waiting || session.status == SessionStatus.sending) {
+            // Already in progress for this device.
+            continue;
+          }
+          ref.notifier(sendProvider).closeSession(session.sessionId);
+        }
+
+        // The sessions run in parallel; each tile shows its own progress.
+        unawaited(
+          ref
+              .notifier(sendProvider)
+              .startSession(
+                target: device,
+                files: files,
+                background: true,
+              ),
+        );
+      }
+
+      ref.notifier(multiSendCheckedDevicesProvider).setState((_) => {});
+    },
   );
 });
+
+/// Devices checked for sending in the multiple recipients mode (by fingerprint).
+final multiSendCheckedDevicesProvider = StateProvider<Set<String>>((ref) => {});
 
 class SendTabInitAction extends AsyncGlobalAction {
   final BuildContext context;

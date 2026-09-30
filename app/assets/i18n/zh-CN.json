@@ -83,6 +83,10 @@
       "multiple": "多个接收者",
       "link": "通过链接分享"
     },
+    "multiSend": {
+      "selectAll": "全选",
+      "sendToChecked": "发送到所选设备（{n}）"
+    },
     "sendModeHelp": "提示",
     "help": "请确保目标连接到同一个 Wi‑Fi 网络。",
     "placeItems": "列出要分享的项目。"

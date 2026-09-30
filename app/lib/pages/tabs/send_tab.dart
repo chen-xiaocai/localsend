@@ -199,6 +199,25 @@ class SendTab extends StatelessWidget {
                 ),
               ],
             ),
+            if (vm.sendMode == SendMode.multiple && vm.nearbyDevices.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10, left: _horizontalPadding, right: _horizontalPadding),
+                child: Row(
+                  children: [
+                    TextButton.icon(
+                      onPressed: () => vm.onCheckAllDevices(vm.checkedDevices.length < vm.nearbyDevices.length),
+                      icon: Icon(vm.checkedDevices.length < vm.nearbyDevices.length ? Icons.select_all : Icons.deselect),
+                      label: Text(t.sendTab.multiSend.selectAll),
+                    ),
+                    const Spacer(),
+                    FilledButton.icon(
+                      onPressed: vm.checkedDevices.isEmpty ? null : () async => await vm.onSendToCheckedDevices(context),
+                      icon: const Icon(Icons.send),
+                      label: Text(t.sendTab.multiSend.sendToChecked(n: vm.checkedDevices.length)),
+                    ),
+                  ],
+                ),
+              ),
             if (vm.nearbyDevices.isEmpty)
               const Padding(
                 padding: EdgeInsets.only(bottom: 10, left: _horizontalPadding, right: _horizontalPadding),
@@ -548,14 +567,24 @@ class _MultiSendDeviceListTile extends StatelessWidget {
       progress = null;
       info = null;
     }
-    return DeviceListTile(
-      device: device,
-      info: info,
-      progress: progress,
-      isFavorite: isFavorite,
-      nameOverride: nameOverride,
-      onDetailsTap: () async => await context.push(() => DeviceDetailsPage(device: device)),
-      onTap: () async => await vm.onTapDeviceMultiSend(context, device),
+    return Row(
+      children: [
+        Checkbox(
+          value: vm.checkedDevices.contains(device.fingerprint),
+          onChanged: (checked) => vm.onCheckDevice(device, checked ?? false),
+        ),
+        Expanded(
+          child: DeviceListTile(
+            device: device,
+            info: info,
+            progress: progress,
+            isFavorite: isFavorite,
+            nameOverride: nameOverride,
+            onDetailsTap: () async => await context.push(() => DeviceDetailsPage(device: device)),
+            onTap: () async => await vm.onTapDeviceMultiSend(context, device),
+          ),
+        ),
+      ],
     );
   }
 }

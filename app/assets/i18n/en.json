@@ -83,6 +83,10 @@
       "multiple": "Multiple recipients",
       "link": "Share via link"
     },
+    "multiSend": {
+      "selectAll": "Select all",
+      "sendToChecked": "Send to selected ({n})"
+    },
     "sendModeHelp": "Explanation",
     "help": "Please ensure that the desired target is also on the same Wi-Fi network.",
     "placeItems": "Place items to share."

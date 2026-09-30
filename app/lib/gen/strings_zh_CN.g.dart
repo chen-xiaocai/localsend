@@ -229,6 +229,8 @@ class Translations$sendTab$zh_CN extends Translations$sendTab$en {
   @override
   late final Translations$sendTab$sendModes$zh_CN sendModes = Translations$sendTab$sendModes$zh_CN.internal(_root);
   @override
+  late final Translations$sendTab$multiSend$zh_CN multiSend = Translations$sendTab$multiSend$zh_CN.internal(_root);
+  @override
   String get sendModeHelp => '提示';
   @override
   String get help => '请确保目标连接到同一个 Wi‑Fi 网络。';
@@ -946,6 +948,19 @@ class Translations$sendTab$sendModes$zh_CN extends Translations$sendTab$sendMode
   String get multiple => '多个接收者';
   @override
   String get link => '通过链接分享';
+}
+
+// Path: sendTab.multiSend
+class Translations$sendTab$multiSend$zh_CN extends Translations$sendTab$multiSend$en {
+  Translations$sendTab$multiSend$zh_CN.internal(TranslationsZhCn root) : this._root = root, super.internal(root);
+
+  final TranslationsZhCn _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get selectAll => '全选';
+  @override
+  String sendToChecked({required Object n}) => '发送到所选设备（${n}）';
 }
 
 // Path: settingsTab.general

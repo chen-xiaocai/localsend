@@ -250,6 +250,7 @@ class Translations$sendTab$en {
   String get sendMode => 'Send mode';
 
   late final Translations$sendTab$sendModes$en sendModes = Translations$sendTab$sendModes$en.internal(_root);
+  late final Translations$sendTab$multiSend$en multiSend = Translations$sendTab$multiSend$en.internal(_root);
 
   /// en: 'Explanation'
   String get sendModeHelp => 'Explanation';
@@ -1078,6 +1079,21 @@ class Translations$sendTab$sendModes$en {
 
   /// en: 'Share via link'
   String get link => 'Share via link';
+}
+
+// Path: sendTab.multiSend
+class Translations$sendTab$multiSend$en {
+  Translations$sendTab$multiSend$en.internal(this._root);
+
+  final Translations _root; // ignore: unused_field
+
+  // Translations
+
+  /// en: 'Select all'
+  String get selectAll => 'Select all';
+
+  /// en: 'Send to selected ({n})'
+  String sendToChecked({required Object n}) => 'Send to selected (${n})';
 }
 
 // Path: settingsTab.general
