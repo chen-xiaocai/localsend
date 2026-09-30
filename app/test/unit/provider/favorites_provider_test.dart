@@ -82,6 +82,49 @@ void main() {
     verify(persistenceService.setFavorites([]));
   });
 
+  test('Should merge IP into existing favorite with same fingerprint', () async {
+    final initialDevice = _createDevice('1', fingerprint: '111');
+    final service = ReduxNotifier.test(
+      redux: FavoritesService(persistenceService),
+      initialState: [initialDevice],
+    );
+
+    final sameDeviceOtherIp = _createDevice('2', fingerprint: '111', ip: '100.64.0.1');
+    await service.dispatchAsync(AddFavoriteAction(sameDeviceOtherIp));
+
+    expect(service.state.length, 1);
+    expect(service.state.first.id, '1');
+    expect(service.state.first.addresses, ['1.2.3.4', '100.64.0.1']);
+  });
+
+  test('Should merge legacy duplicate favorites on init', () {
+    when(persistenceService.getFavorites()).thenReturn([
+      _createDevice('1', fingerprint: '111'),
+      _createDevice('2', fingerprint: '111', ip: '100.64.0.1'),
+      _createDevice('3', fingerprint: '222', ip: '5.6.7.8'),
+    ]);
+
+    final service = ReduxNotifier.test(
+      redux: FavoritesService(persistenceService),
+    );
+
+    expect(service.state.length, 2);
+    expect(service.state.first.id, '1');
+    expect(service.state.first.addresses, ['1.2.3.4', '100.64.0.1']);
+    expect(service.state.last.id, '3');
+  });
+
+  test('withIp should promote an existing IP to primary', () {
+    final device = _createDevice('1').withIp('100.64.0.1');
+
+    expect(device.addresses, ['1.2.3.4', '100.64.0.1']);
+
+    final promoted = device.withIp('100.64.0.1', primary: true);
+
+    expect(promoted.ip, '100.64.0.1');
+    expect(promoted.addresses, ['100.64.0.1', '1.2.3.4']);
+  });
+
   test('Should not delete favorite device if unknown fingerprint', () async {
     final initialDevice = _createDevice('1', fingerprint: '111');
     final service = ReduxNotifier.test(
@@ -103,11 +146,12 @@ FavoriteDevice _createDevice(
   String id, {
   String fingerprint = '123',
   String alias = 'A',
+  String ip = '1.2.3.4',
 }) {
   return FavoriteDevice(
     id: id,
     fingerprint: fingerprint,
-    ip: '1.2.3.4',
+    ip: ip,
     port: 123,
     alias: alias,
   );

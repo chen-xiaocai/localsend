@@ -170,12 +170,13 @@ class _FavoriteEditDialogState extends State<FavoriteEditDialog> with Refena {
                         .redux(favoritesProvider)
                         .dispatchAsync(
                           UpdateFavoriteAction(
-                            existingFavorite.copyWith(
-                              ip: _ipController.text,
-                              port: int.parse(_portController.text),
-                              alias: trimmedNewAlias,
-                              customAlias: existingFavorite.customAlias || trimmedNewAlias != existingFavorite.alias,
-                            ),
+                            existingFavorite
+                                .withIp(_ipController.text, primary: true)
+                                .copyWith(
+                                  port: int.parse(_portController.text),
+                                  alias: trimmedNewAlias,
+                                  customAlias: existingFavorite.customAlias || trimmedNewAlias != existingFavorite.alias,
+                                ),
                           ),
                         );
                   } else {

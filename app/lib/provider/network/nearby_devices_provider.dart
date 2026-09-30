@@ -87,9 +87,18 @@ class RegisterDeviceAction extends AsyncReduxAction<NearbyDevicesService, Nearby
     assert(device.ip?.isNotEmpty ?? false, 'IP must not be empty');
 
     final favoriteDevice = notifier._favoriteService.state.firstWhereOrNull((e) => e.fingerprint == device.fingerprint);
-    if (favoriteDevice != null && !favoriteDevice.customAlias) {
-      // Update existing favorite with new alias
-      await external(notifier._favoriteService).dispatchAsync(UpdateFavoriteAction(favoriteDevice.copyWith(alias: device.alias)));
+    if (favoriteDevice != null) {
+      // Update existing favorite: record the IP the device was just seen on
+      // (a device may have multiple IPs) and refresh the alias.
+      var updatedFavorite = favoriteDevice.withIp(device.ip!);
+      if (!favoriteDevice.customAlias) {
+        updatedFavorite = updatedFavorite.copyWith(alias: device.alias);
+      }
+      if (updatedFavorite != favoriteDevice) {
+        await external(notifier._favoriteService).dispatchAsync(UpdateFavoriteAction(updatedFavorite));
+      } else {
+        await Future.microtask(() {});
+      }
     } else {
       await Future.microtask(() {});
     }
@@ -222,7 +231,8 @@ class StartStagedScan extends AsyncReduxAction<NearbyDevicesService, NearbyDevic
     await external(notifier._isolateController)
         .dispatchTakeResult(
           IsolateDiscoveryStagedScanAction(
-            favorites: favorites.map((e) => (e.ip, e.port)).toList(),
+            // probe every known IP of each favorite, not only the primary one
+            favorites: favorites.expand((e) => e.addresses.map((ip) => (ip, e.port))).toList(),
             networkInterfaces: interfaces,
             port: port,
             https: https,
