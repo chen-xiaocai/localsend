@@ -80,8 +80,10 @@ class ReceiveController {
     final destinationDir = settings.destination ?? await getDefaultDestinationDirectory();
     final cacheDir = await getCacheDirectory();
     final sessionId = event.sessionId;
+    // The map from Rust is unordered. Sorting by id restores the selection
+    // order of senders that use ordered ids (see SendNotifier.startSession).
     final files = {
-      for (final entry in event.files.entries) entry.key: entry.value.toDart(),
+      for (final entry in event.files.entries.sortedBy((e) => e.key)) entry.key: entry.value.toDart(),
     };
 
     // The fingerprint of the sender's mTLS certificate cannot be spoofed, unlike the

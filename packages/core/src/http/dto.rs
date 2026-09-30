@@ -1,5 +1,6 @@
 use crate::http::dto_v2::{
     PrepareUploadRequestDtoV2, PrepareUploadResponseDtoV2, RegisterDtoV2, RegisterResponseDtoV2,
+    serialize_sorted_files,
 };
 use crate::model::discovery::DeviceType;
 use crate::model::discovery::ProtocolType;
@@ -87,6 +88,7 @@ pub struct RegisterResponseDto {
 #[serde(rename_all = "camelCase")]
 pub struct PrepareUploadRequestDto {
     pub info: RegisterDto,
+    #[serde(serialize_with = "serialize_sorted_files")]
     pub files: HashMap<String, FileDto>,
 }
 

@@ -1,13 +1,26 @@
 use crate::model::discovery::DeviceType;
 use crate::model::transfer::FileDto;
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use serde::{Deserialize, Serialize, Serializer};
+use std::collections::{BTreeMap, HashMap};
 
 // Discovery types are shared with the (HTTP-independent) multicast module and
 // therefore live in `crate::model::discovery`. They are re-exported here so that
 // the v2 DTOs remain available under a single path.
 use crate::model::discovery::ProtocolType;
 use crate::model::discovery::{device_type_v2, protocol_type_v2};
+
+/// Serializes a file map with its keys in ascending order.
+///
+/// The file map is a `HashMap`, so its iteration order is random. Receivers show
+/// and save the files in the order of the JSON object, so a stable order is
+/// needed; senders use ids that sort in selection order.
+pub(crate) fn serialize_sorted_files<S, V>(files: &HashMap<String, V>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+    V: Serialize,
+{
+    files.iter().collect::<BTreeMap<_, _>>().serialize(serializer)
+}
 
 /// Register request DTO for v2.2 protocol.
 ///
@@ -93,6 +106,7 @@ pub struct PrepareUploadRequestDtoV2 {
     pub info: RegisterDtoV2,
 
     /// Map of file ID to file metadata.
+    #[serde(serialize_with = "serialize_sorted_files")]
     pub files: HashMap<String, FileDto>,
 }
 
@@ -129,6 +143,7 @@ pub struct PrepareDownloadResponseDtoV2 {
     pub session_id: String,
 
     /// Map of file ID to file metadata.
+    #[serde(serialize_with = "serialize_sorted_files")]
     pub files: HashMap<String, FileDto>,
 }
 
@@ -274,5 +289,39 @@ mod tests {
         assert!(json.contains("\"info\""));
         assert!(json.contains("\"files\""));
         assert!(json.contains("\"fingerprint\":\"sender-fingerprint\""));
+    }
+
+    #[test]
+    fn test_prepare_upload_request_v2_files_are_serialized_in_key_order() {
+        let file = |id: &str| FileDto {
+            id: id.to_string(),
+            file_name: format!("{id}.jpg"),
+            size: 1,
+            file_type: "image/jpeg".to_string(),
+            sha256: None,
+            preview: None,
+            metadata: None,
+        };
+        let ids = ["00003-c", "00000-a", "00002-x", "00001-b", "00004-0"];
+        let request = PrepareUploadRequestDtoV2 {
+            info: RegisterDtoV2 {
+                alias: "Sender".to_string(),
+                version: "2.2".to_string(),
+                device_model: None,
+                device_type: None,
+                fingerprint: "sender-fingerprint".to_string(),
+                port: 53317,
+                protocol: ProtocolType::Https,
+                download: false,
+            },
+            files: ids.iter().map(|id| (id.to_string(), file(id))).collect(),
+        };
+
+        let json = serde_json::to_string(&request).unwrap();
+        let positions: Vec<usize> = ["00000-a", "00001-b", "00002-x", "00003-c", "00004-0"]
+            .iter()
+            .map(|id| json.find(&format!("\"{id}\":")).unwrap())
+            .collect();
+        assert!(positions.windows(2).all(|w| w[0] < w[1]), "{json}");
     }
 }

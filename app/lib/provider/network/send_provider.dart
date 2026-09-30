@@ -98,7 +98,9 @@ class SendNotifier extends Notifier<Map<String, SendSessionState>> {
 
     // The ids are assigned upfront, so the checksums calculated below
     // can be mapped back to the corresponding file.
-    final selectedFiles = files.map((file) => (id: _uuid.v4(), file: file)).toList();
+    // The index prefix makes the ids sort in selection order, which keeps the
+    // order on the receiver (the file map itself is unordered).
+    final selectedFiles = files.indexed.map((e) => (id: '${e.$1.toString().padLeft(5, '0')}-${_uuid.v4()}', file: e.$2)).toList();
 
     state = state.updateSession(
       sessionId: sessionId,
