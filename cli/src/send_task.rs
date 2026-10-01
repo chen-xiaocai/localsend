@@ -176,7 +176,7 @@ async fn send_inner(
 
     // Upload sequentially in a stable order.
     let mut file_ids: Vec<&String> = response.files.keys().collect();
-    file_ids.sort_by_key(|file_id| &files[*file_id].file_name);
+    file_ids.sort();
 
     let started = Instant::now();
     let mut sent_files = 0usize;

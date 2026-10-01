@@ -150,7 +150,7 @@ pub(super) fn spawn_send(
 }
 
 /// Expands and stats picked files/directories into transfer metadata keyed
-/// by a fresh file ID, plus paths under the same IDs and the total byte
+/// by a fresh file ID (sorting in the given order), plus paths under the same IDs and the total byte
 /// count. Entries that are not readable files are skipped with a log line.
 pub(super) fn collect_files(
     ui: &mut Ui,
@@ -180,7 +180,9 @@ pub(super) fn collect_files(
                 continue;
             }
         };
-        let id = Uuid::new_v4().to_string();
+        // The index prefix makes the ids sort in the given order; receivers sort
+        // the (unordered) file map by id.
+        let id = format!("{:05}-{}", files.len(), Uuid::new_v4());
         total_bytes += metadata.len();
         files.insert(
             id.clone(),
