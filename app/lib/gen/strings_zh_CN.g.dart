@@ -1395,6 +1395,14 @@ class Translations$dialogs$favoriteEditDialog$zh_CN extends Translations$dialogs
   String get ip => 'IP 地址';
   @override
   String get port => '端口';
+  @override
+  String get addIp => '添加 IP';
+  @override
+  String get removeIp => '删除 IP';
+  @override
+  String get primaryIp => '主';
+  @override
+  String get ipRequired => '至少需要一个 IP 地址';
 }
 
 // Path: dialogs.fileInfo

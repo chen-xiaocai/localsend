@@ -1627,6 +1627,18 @@ class Translations$dialogs$favoriteEditDialog$en {
 
   /// en: 'Port'
   String get port => 'Port';
+
+  /// en: 'Add IP'
+  String get addIp => 'Add IP';
+
+  /// en: 'Remove IP'
+  String get removeIp => 'Remove IP';
+
+  /// en: 'Primary'
+  String get primaryIp => 'Primary';
+
+  /// en: 'At least one IP address is required'
+  String get ipRequired => 'At least one IP address is required';
 }
 
 // Path: dialogs.fileInfo

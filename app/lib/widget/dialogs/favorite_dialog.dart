@@ -1,17 +1,12 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:localsend_app/config/theme.dart';
 import 'package:localsend_app/gen/strings.g.dart';
 import 'package:localsend_app/model/persistence/favorite_device.dart';
-import 'package:localsend_app/provider/device_info_provider.dart';
 import 'package:localsend_app/provider/favorites_provider.dart';
-import 'package:localsend_app/provider/http_provider.dart';
 import 'package:localsend_app/provider/settings_provider.dart';
+import 'package:localsend_app/util/register_race.dart';
 import 'package:localsend_app/widget/dialogs/error_dialog.dart';
 import 'package:localsend_app/widget/dialogs/favorite_edit_dialog.dart';
-import 'package:localsend_isolates/model/device.dart';
-import 'package:localsend_isolates/rust/api/model.dart';
 import 'package:localsend_isolates/util/rust.dart';
 import 'package:refena_flutter/refena_flutter.dart';
 import 'package:routerino/routerino.dart';
@@ -40,11 +35,11 @@ class _FavoritesDialogState extends State<FavoritesDialog> with Refena {
     final https = ref.read(settingsProvider).https;
 
     try {
-      final payload = ref.read(deviceFullInfoProvider).toRegisterDto();
-      final device = await _raceAddresses(favorite, https, payload);
+      final (ip, response) = await raceRegister(ref, ips: favorite.addresses, port: favorite.port, https: https);
+      final device = response.toDevice(ip, favorite.port, https);
 
       // Remember which IP actually worked.
-      await ref.redux(favoritesProvider).dispatchAsync(UpdateFavoriteAction(favorite.withIp(device.ip!, primary: true)));
+      await ref.redux(favoritesProvider).dispatchAsync(UpdateFavoriteAction(favorite.withIp(ip, primary: true)));
 
       if (mounted) {
         context.pop(device);
@@ -55,44 +50,6 @@ class _FavoritesDialogState extends State<FavoritesDialog> with Refena {
         _error = e.toString();
       });
     }
-  }
-
-  /// Registers with all known IPs of [favorite] concurrently and returns the
-  /// device from the first successful response.
-  /// Throws the first error if no IP responds.
-  Future<Device> _raceAddresses(FavoriteDevice favorite, bool https, RegisterDto payload) {
-    final addresses = favorite.addresses;
-    final completer = Completer<Device>();
-    var pending = addresses.length;
-    Object? firstError;
-
-    for (final ip in addresses) {
-      unawaited(
-        ref
-            .read(httpProvider)
-            .discovery
-            .register(
-              protocol: https ? ProtocolType.https : ProtocolType.http,
-              ip: ip,
-              port: favorite.port,
-              payload: payload,
-            )
-            .then((response) {
-              if (!completer.isCompleted) {
-                completer.complete(response.body.toDevice(ip, favorite.port, https));
-              }
-            })
-            .catchError((Object e) {
-              firstError ??= e;
-              pending--;
-              if (pending == 0 && !completer.isCompleted) {
-                completer.completeError(firstError!);
-              }
-            }),
-      );
-    }
-
-    return completer.future;
   }
 
   Future<void> _showDeviceDialog([FavoriteDevice? favorite]) async {

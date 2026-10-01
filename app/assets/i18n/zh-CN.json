@@ -464,7 +464,11 @@
       "name": "名称",
       "auto": "(自动)",
       "ip": "IP 地址",
-      "port": "端口"
+      "port": "端口",
+      "addIp": "添加 IP",
+      "removeIp": "删除 IP",
+      "primaryIp": "主",
+      "ipRequired": "至少需要一个 IP 地址"
     },
     "fileInfo": {
       "title": "文件信息",

@@ -465,7 +465,11 @@
       "name": "Device name",
       "auto": "(auto)",
       "ip": "IP Address",
-      "port": "Port"
+      "port": "Port",
+      "addIp": "Add IP",
+      "removeIp": "Remove IP",
+      "primaryIp": "Primary",
+      "ipRequired": "At least one IP address is required"
     },
     "fileInfo": {
       "title": "File information",

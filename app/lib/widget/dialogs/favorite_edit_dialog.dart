@@ -2,15 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:localsend_app/config/theme.dart';
 import 'package:localsend_app/gen/strings.g.dart';
 import 'package:localsend_app/model/persistence/favorite_device.dart';
-import 'package:localsend_app/provider/device_info_provider.dart';
 import 'package:localsend_app/provider/favorites_provider.dart';
-import 'package:localsend_app/provider/http_provider.dart';
 import 'package:localsend_app/provider/settings_provider.dart';
+import 'package:localsend_app/util/register_race.dart';
 import 'package:localsend_app/widget/dialogs/error_dialog.dart';
 import 'package:localsend_app/widget/dialogs/favorite_delete_dialog.dart';
 import 'package:localsend_isolates/model/device.dart';
-import 'package:localsend_isolates/rust/api/model.dart';
-import 'package:localsend_isolates/util/rust.dart';
 import 'package:refena_flutter/refena_flutter.dart';
 import 'package:routerino/routerino.dart';
 
@@ -29,17 +26,25 @@ class FavoriteEditDialog extends StatefulWidget {
 }
 
 class _FavoriteEditDialogState extends State<FavoriteEditDialog> with Refena {
-  final _ipController = TextEditingController();
+  /// One controller per IP address; the first one is the primary IP.
+  final _ipControllers = <TextEditingController>[];
+
+  /// Controllers of rows added by the user, which should get focus.
+  final _addedIpControllers = <TextEditingController>{};
   final _portController = TextEditingController();
   final _aliasController = TextEditingController();
   bool _fetching = false;
   String? _error;
+  bool _ipMissing = false;
 
   @override
   void initState() {
     super.initState();
 
-    _ipController.text = widget.prefilledDevice?.ip ?? widget.favorite?.ip ?? '';
+    final ips = widget.prefilledDevice != null ? [widget.prefilledDevice!.ip ?? ''] : widget.favorite?.addresses ?? const <String>[];
+    for (final ip in ips.isEmpty ? [''] : ips) {
+      _ipControllers.add(TextEditingController(text: ip));
+    }
     _aliasController.text = widget.prefilledDevice?.alias ?? widget.favorite?.alias ?? '';
 
     ensureRef((ref) {
@@ -50,10 +55,34 @@ class _FavoriteEditDialogState extends State<FavoriteEditDialog> with Refena {
 
   @override
   void dispose() {
-    _ipController.dispose();
+    for (final controller in _ipControllers) {
+      controller.dispose();
+    }
     _portController.dispose();
     _aliasController.dispose();
     super.dispose();
+  }
+
+  /// The entered IPs, trimmed and without empty entries or duplicates.
+  List<String> _collectIps() {
+    return _ipControllers.map((c) => c.text.trim()).where((ip) => ip.isNotEmpty).toSet().toList();
+  }
+
+  void _addIp() {
+    final controller = TextEditingController();
+    setState(() {
+      _ipControllers.add(controller);
+      _addedIpControllers.add(controller);
+    });
+  }
+
+  void _removeIp(TextEditingController controller) {
+    setState(() {
+      _ipControllers.remove(controller);
+      _addedIpControllers.remove(controller);
+    });
+    // Dispose after the field using it is gone.
+    WidgetsBinding.instance.addPostFrameCallback((_) => controller.dispose());
   }
 
   @override
@@ -78,10 +107,41 @@ class _FavoriteEditDialogState extends State<FavoriteEditDialog> with Refena {
             const SizedBox(height: 16),
             Text(t.dialogs.favoriteEditDialog.ip),
             const SizedBox(height: 5),
-            TextFormField(
-              controller: _ipController,
-              autofocus: widget.favorite == null && widget.prefilledDevice == null,
-              enabled: !_fetching,
+            for (final (index, controller) in _ipControllers.indexed)
+              Padding(
+                key: ObjectKey(controller),
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: controller,
+                        autofocus:
+                            _addedIpControllers.contains(controller) || (index == 0 && widget.favorite == null && widget.prefilledDevice == null),
+                        enabled: !_fetching,
+                        keyboardType: TextInputType.url,
+                        decoration: InputDecoration(
+                          suffixText: index == 0 && _ipControllers.length > 1 ? t.dialogs.favoriteEditDialog.primaryIp : null,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: t.dialogs.favoriteEditDialog.removeIp,
+                      onPressed: _fetching || _ipControllers.length <= 1 ? null : () => _removeIp(controller),
+                      icon: const Icon(Icons.remove_circle_outline),
+                    ),
+                  ],
+                ),
+              ),
+            if (_ipMissing)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(t.dialogs.favoriteEditDialog.ipRequired, style: TextStyle(color: Theme.of(context).colorScheme.warning)),
+              ),
+            TextButton.icon(
+              onPressed: _fetching ? null : _addIp,
+              icon: const Icon(Icons.add),
+              label: Text(t.dialogs.favoriteEditDialog.addIp),
             ),
             const SizedBox(height: 16),
             Text(t.dialogs.favoriteEditDialog.port),
@@ -150,7 +210,9 @@ class _FavoriteEditDialogState extends State<FavoriteEditDialog> with Refena {
           onPressed: _fetching
               ? null
               : () async {
-                  if (_ipController.text.isEmpty) {
+                  final ips = _collectIps();
+                  setState(() => _ipMissing = ips.isEmpty);
+                  if (ips.isEmpty) {
                     return;
                   }
 
@@ -170,18 +232,21 @@ class _FavoriteEditDialogState extends State<FavoriteEditDialog> with Refena {
                         .redux(favoritesProvider)
                         .dispatchAsync(
                           UpdateFavoriteAction(
-                            existingFavorite
-                                .withIp(_ipController.text, primary: true)
-                                .copyWith(
-                                  port: int.parse(_portController.text),
-                                  alias: trimmedNewAlias,
-                                  customAlias: existingFavorite.customAlias || trimmedNewAlias != existingFavorite.alias,
-                                ),
+                            existingFavorite.copyWith(
+                              ip: ips.first,
+                              ips: ips,
+                              port: int.parse(_portController.text),
+                              alias: trimmedNewAlias,
+                              customAlias: existingFavorite.customAlias || trimmedNewAlias != existingFavorite.alias,
+                            ),
                           ),
                         );
+
+                    if (context.mounted) {
+                      context.pop();
+                    }
                   } else {
                     // Add new favorite
-                    final ip = _ipController.text;
                     final port = int.parse(_portController.text);
                     final https = ref.read(settingsProvider).https;
                     setState(() {
@@ -189,16 +254,8 @@ class _FavoriteEditDialogState extends State<FavoriteEditDialog> with Refena {
                     });
 
                     try {
-                      final payload = ref.read(deviceFullInfoProvider).toRegisterDto();
-                      final response = await ref
-                          .read(httpProvider)
-                          .discovery
-                          .register(
-                            protocol: https ? ProtocolType.https : ProtocolType.http,
-                            ip: ip,
-                            port: port,
-                            payload: payload,
-                          );
+                      // The first IP that responds becomes the primary IP.
+                      final (ip, response) = await raceRegister(ref, ips: ips, port: port, https: https);
 
                       final name = _aliasController.text.trim();
 
@@ -207,11 +264,11 @@ class _FavoriteEditDialogState extends State<FavoriteEditDialog> with Refena {
                           .dispatchAsync(
                             AddFavoriteAction(
                               FavoriteDevice.fromValues(
-                                fingerprint: response.body.token,
-                                ip: _ipController.text,
-                                port: int.parse(_portController.text),
-                                alias: name.isEmpty ? response.body.alias : name,
-                              ),
+                                fingerprint: response.token,
+                                ip: ip,
+                                port: port,
+                                alias: name.isEmpty ? response.alias : name,
+                              ).copyWith(ips: [ip, ...ips.where((e) => e != ip)]),
                             ),
                           );
 
