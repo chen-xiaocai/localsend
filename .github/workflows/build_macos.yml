@@ -9,7 +9,7 @@ env:
 jobs:
   build_macos:
     name: Build macOS arm64 app
-    runs-on: macos-14
+    runs-on: macos-15 # Xcode 16 (macOS 15 SDK), required by in_app_purchase_storekit
 
     steps:
       - name: Checkout repository
