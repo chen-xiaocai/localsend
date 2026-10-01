@@ -1,0 +1,64 @@
+name: Build macOS app
+
+on:
+  workflow_dispatch:
+
+env:
+  FLUTTER_VERSION: "3.41.9"
+
+jobs:
+  build_macos:
+    name: Build macOS arm64 app
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: "stable"
+
+      - name: Install Rust
+        run: rustup toolchain install # version from rust-toolchain.toml
+
+      - name: Fetch dependencies
+        working-directory: app
+        run: flutter pub get
+
+      - name: Configure unsigned Xcode build
+        working-directory: app
+        run: |
+          project=macos/Runner.xcodeproj/project.pbxproj
+          sed -i '' \
+            -e 's/"Apple Development"/"-"/g' \
+            -e 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' \
+            -e 's/DEVELOPMENT_TEAM = 3W7H4PYMCV;/DEVELOPMENT_TEAM = "";/g' \
+            "$project"
+
+      - name: Build macOS app
+        working-directory: app
+        run: flutter build macos --release
+
+      - name: Re-sign app bundle
+        working-directory: app/build/macos/Build/Products/Release
+        run: |
+          app_bundle=$(find . -maxdepth 1 -type d -name '*.app' -print -quit)
+          test -n "$app_bundle"
+          codesign --force --deep --sign - "$app_bundle"
+          codesign --verify --deep --strict --verbose=2 "$app_bundle"
+
+      - name: Package app bundle
+        working-directory: app/build/macos/Build/Products/Release
+        run: |
+          app_bundle=$(find . -maxdepth 1 -type d -name '*.app' -print -quit)
+          test -n "$app_bundle"
+          ditto -c -k --keepParent "$app_bundle" LocalSend-macos-arm64.zip
+
+      - name: Upload macOS app
+        uses: actions/upload-artifact@v6
+        with:
+          name: localsend-macos-arm64
+          path: app/build/macos/Build/Products/Release/LocalSend-macos-arm64.zip
+          if-no-files-found: error
