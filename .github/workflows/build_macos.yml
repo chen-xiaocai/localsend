@@ -8,7 +8,7 @@ env:
 
 jobs:
   build_macos:
-    name: Build macOS arm64 app
+    name: Build macOS universal app (x86_64 + arm64)
     runs-on: macos-26 # Xcode 26 (macOS 26 SDK), required by connectivity_plus and in_app_purchase_storekit
 
     steps:
@@ -54,11 +54,11 @@ jobs:
         run: |
           app_bundle=$(find . -maxdepth 1 -type d -name '*.app' -print -quit)
           test -n "$app_bundle"
-          ditto -c -k --keepParent "$app_bundle" LocalSend-macos-arm64.zip
+          ditto -c -k --keepParent "$app_bundle" LocalSend-macos-universal.zip
 
       - name: Upload macOS app
         uses: actions/upload-artifact@v6
         with:
-          name: localsend-macos-arm64
-          path: app/build/macos/Build/Products/Release/LocalSend-macos-arm64.zip
+          name: localsend-macos-universal
+          path: app/build/macos/Build/Products/Release/LocalSend-macos-universal.zip
           if-no-files-found: error
