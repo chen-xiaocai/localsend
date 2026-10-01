@@ -19,7 +19,7 @@ use localsend::model::transfer::FileDto;
 use localsend::util::filename;
 use std::collections::{HashMap, HashSet};
 use std::path::{Component, Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tokio::signal::unix::{SignalKind, signal};
 use tokio::sync::{mpsc, oneshot};
@@ -128,13 +128,24 @@ pub(super) async fn run(storage: Repository, only_paired: bool) -> anyhow::Resul
 async fn tailscale_channels(port: u16) -> Vec<HttpChannel> {
     match tailscale::peers().await {
         Ok(peers) => {
-            log("D", &format!("tailscale_peers {peers:?}"));
+            log_tailscale(format!("tailscale_peers {peers:?}"));
             tailscale::channels(&peers, port)
         }
         Err(err) => {
-            log("D", &format!("tailscale_unavailable error={err:#}"));
+            log_tailscale(format!("tailscale_unavailable error={err:#}"));
             Vec::new()
         }
+    }
+}
+
+/// Logs the Tailscale state only when it differs from the last one: it is polled
+/// on every rediscovery tick and is the same most of the time.
+fn log_tailscale(text: String) {
+    static LAST: Mutex<Option<String>> = Mutex::new(None);
+    let mut last = LAST.lock().unwrap_or_else(|e| e.into_inner());
+    if last.as_deref() != Some(text.as_str()) {
+        log("D", &text);
+        *last = Some(text);
     }
 }
 

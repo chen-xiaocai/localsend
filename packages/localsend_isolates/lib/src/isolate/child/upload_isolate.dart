@@ -14,8 +14,9 @@ import 'package:refena_flutter/refena_flutter.dart';
 import 'package:typed_isolates/typed_isolates.dart';
 
 /// How many files of a [HttpUploadFilesTask] are uploaded in parallel.
-/// One at a time, so the receiver gets (and saves) the files in selection order.
-const _concurrency = 1;
+/// The receiver restores the selection order from the file ids, so the files
+/// do not need to arrive in order.
+const _concurrency = 2;
 
 /// How often a single file is uploaded at most when the receiver keeps
 /// rejecting it with a checksum mismatch (HTTP 422).

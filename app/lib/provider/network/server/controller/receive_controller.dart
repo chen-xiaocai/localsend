@@ -52,6 +52,15 @@ class ReceiveController {
 
   ReceiveController(this.server);
 
+  /// The session whose files are tracked in [_filesInHistory].
+  String? _historySessionId;
+
+  /// Files of [_historySessionId] already added to the receive history.
+  final _filesInHistory = <String>{};
+
+  /// Chains the history writes: each one reads and replaces the whole list.
+  Future<void> _historyWrites = Future.value();
+
   /// A device registered itself on this server.
   Future<void> onRegister(HttpServerRegisterEvent event) async {
     if (event.info.fingerprint == server.ref.read(securityProvider).certificateHash) {
@@ -357,22 +366,7 @@ class ReceiveController {
         ),
       );
 
-      // Track it in history
-      await server.ref
-          .redux(receiveHistoryProvider)
-          .dispatchAsync(
-            AddHistoryEntryAction(
-              entryId: fileId,
-              fileName: receivingFile.desiredName!,
-              fileType: fileType,
-              path: filePath,
-              savedToGallery: event.savedToGallery,
-              isMessage: false,
-              fileSize: receivingFile.file.size,
-              senderAlias: receiveState.senderAlias,
-              timestamp: DateTime.now().toUtc(),
-            ),
-          );
+      await _addFilesToHistory();
     } else {
       server.ref.notifier(fileTransferProvider).setStatus(sessionId: event.sessionId, fileId: fileId, status: FileStatus.failed);
       server.setState(
@@ -394,6 +388,11 @@ class ReceiveController {
           fileId: fileId,
           progress: 1,
         );
+
+    if (error != null) {
+      // A failed file no longer holds back the files after it.
+      await _addFilesToHistory();
+    }
 
     final session = server.getStateOrNull()?.session;
     if (session == null) {
@@ -457,6 +456,64 @@ class ReceiveController {
     }
   }
 
+  /// Adds the received files of the current session to the history in selection order.
+  ///
+  /// Several files are uploaded at once, so they can finish out of order. A file is
+  /// only added once all files before it are done, unless [all] is set because the
+  /// session is over.
+  Future<void> _addFilesToHistory({bool all = false}) {
+    final session = server.getStateOrNull()?.session;
+    if (session == null) {
+      return _historyWrites;
+    }
+    if (_historySessionId != session.sessionId) {
+      _historySessionId = session.sessionId;
+      _filesInHistory.clear();
+    }
+
+    final transfers = server.ref.read(fileTransferProvider);
+    final entries = <AddHistoryEntryAction>[];
+    // The files are sorted by id, i.e. in selection order (see onPrepareUpload).
+    files:
+    for (final MapEntry(key: fileId, value: file) in session.files.entries) {
+      if (_filesInHistory.contains(fileId)) {
+        continue;
+      }
+      switch (transfers.getStatus(sessionId: session.sessionId, fileId: fileId)) {
+        case FileStatus.skipped || FileStatus.failed:
+          break;
+        case FileStatus.queue || FileStatus.sending:
+          if (!all) {
+            break files;
+          }
+        case FileStatus.finished:
+          _filesInHistory.add(fileId);
+          entries.add(
+            AddHistoryEntryAction(
+              entryId: fileId,
+              fileName: file.desiredName!,
+              fileType: file.file.fileType,
+              path: file.path,
+              savedToGallery: file.savedToGallery,
+              isMessage: false,
+              fileSize: file.file.size,
+              senderAlias: session.senderAlias,
+              timestamp: DateTime.now().toUtc(),
+            ),
+          );
+      }
+    }
+
+    if (entries.isEmpty) {
+      return _historyWrites;
+    }
+    return _historyWrites = _historyWrites.then((_) async {
+      for (final entry in entries) {
+        await server.ref.redux(receiveHistoryProvider).dispatchAsync(entry);
+      }
+    });
+  }
+
   /// An upload session ended on the Rust server.
   void onSessionEnd(HttpServerSessionEndEvent event) {
     final receiveSession = server.getStateOrNull()?.session;
@@ -469,6 +526,7 @@ class ReceiveController {
         // Already handled when the last file finished.
         break;
       case SessionEndReasonV2.cancelled:
+        unawaited(_addFilesToHistory(all: true));
         _cancelBySender(server);
     }
   }
@@ -696,6 +754,9 @@ class ReceiveController {
     if (sessionId == null) {
       return;
     }
+
+    // Reads the file statuses, so it must run before they are removed below.
+    unawaited(_addFilesToHistory(all: true));
 
     TransferNotification.stop(sessionId);
 

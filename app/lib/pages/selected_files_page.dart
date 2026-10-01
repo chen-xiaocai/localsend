@@ -81,7 +81,10 @@ class SelectedFilesPage extends StatelessWidget {
                       splashFactory: NoSplash.splashFactory,
                       highlightColor: Colors.transparent,
                       hoverColor: Colors.transparent,
-                      onTap: file.path == null
+                      // The crop page shows the full image too, so it replaces the preview where cropping works.
+                      onTap: canCropFile(file)
+                          ? () async => await cropSelectedFile(context, ref, file)
+                          : file.path == null
                           ? null
                           : file.fileType == FileType.image && !file.path!.startsWith('content://')
                           ? () async => await context.push(() => ImagePreviewPage(initialFile: file))
